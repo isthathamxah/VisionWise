@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Layers, Target, X } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Layers, Target, X, Utensils, TriangleAlert } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import InfographicChart from '../components/InfographicChart/InfographicChart'
 import VerdictCard from '../components/VerdictCard/VerdictCard'
@@ -31,13 +31,17 @@ export default function History() {
   const [filter, setFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [selectedScan, setSelectedScan] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null) // the scan pending delete confirmation
 
   useEffect(() => {
-    if (!selectedScan) return
-    const onKey = e => { if (e.key === 'Escape') setSelectedScan(null) }
+    if (!selectedScan && !confirmDelete) return
+    const onKey = e => {
+      if (e.key !== 'Escape') return
+      confirmDelete ? setConfirmDelete(null) : setSelectedScan(null)
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedScan])
+  }, [selectedScan, confirmDelete])
 
   const fetchData = async () => {
     setLoading(true)
@@ -53,7 +57,7 @@ export default function History() {
   useEffect(() => { fetchData() }, [page, filter])
 
   const handleDelete = async id => {
-    if (!confirm('Delete this scan?')) return
+    setConfirmDelete(null)
     await api.delete(`/history/${id}`)
     fetchData()
   }
@@ -148,7 +152,10 @@ export default function History() {
               className="card p-4 flex items-center gap-3 cursor-pointer hover:border-brand transition-colors">
               <span className={`w-2 h-2 rounded-full shrink-0 ${verdictDot[s.verdict]}`} />
               <div className="flex-1 min-w-0">
-                <p className="text-text font-medium capitalize truncate">{s.objectLabel}</p>
+                <div className="flex items-center gap-1.5">
+                  {s.food?.isFood && <Utensils size={12} className="text-brand shrink-0" aria-label="Nutrition detail available" />}
+                  <p className="text-text font-medium capitalize truncate">{s.objectLabel}</p>
+                </div>
                 <p className="font-mono text-[11px] text-faint mt-0.5">
                   {contextLabel[s.context]} · {new Date(s.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                 </p>
@@ -157,9 +164,9 @@ export default function History() {
                 <p className={`font-display font-bold ${verdictText[s.verdict]}`}>{s.score}</p>
                 <p className={`font-mono text-[10px] ${verdictText[s.verdict]}`}>{s.verdict}</p>
               </div>
-              <button onClick={e => { e.stopPropagation(); handleDelete(s._id) }}
+              <button onClick={e => { e.stopPropagation(); setConfirmDelete(s) }}
                 onKeyDown={e => e.stopPropagation()}
-                className="text-faint hover:text-bad transition-colors cursor-pointer p-1 shrink-0" aria-label="Delete scan">
+                className="text-faint hover:text-bad transition-colors cursor-pointer p-2 -m-1 shrink-0" aria-label="Delete scan">
                 <Trash2 size={15} />
               </button>
             </div>
@@ -191,6 +198,25 @@ export default function History() {
               <X size={16} />
             </button>
             <VerdictCard result={selectedScan} onScanAgain={() => setSelectedScan(null)} actionLabel="Close" />
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setConfirmDelete(null)}>
+          <div className="card w-full max-w-xs p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-bad/10 text-bad shrink-0">
+                <TriangleAlert size={18} />
+              </span>
+              <p className="font-display font-bold text-text">Delete this scan?</p>
+            </div>
+            <p className="text-muted text-sm mb-5"><span className="capitalize">{confirmDelete.objectLabel}</span> · {contextLabel[confirmDelete.context]} — this can't be undone.</p>
+            <div className="flex gap-2.5">
+              <button onClick={() => setConfirmDelete(null)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={() => handleDelete(confirmDelete._id)} className="btn flex-1 text-white bg-bad hover:opacity-90">Delete</button>
+            </div>
           </div>
         </div>
       )}

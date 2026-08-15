@@ -32,6 +32,10 @@ export default function VerdictCard({ result, onScanAgain, actionLabel = 'Scan a
   const isFallback = result.fallback === true
   const isFood = result.food?.isFood && (result.food.unclear || result.food.nutrients?.length)
   const isLabelRead = result.food?.source === 'label'
+  // Only history-sourced scans carry a timestamp — a just-scanned result's "now" is implied.
+  const dateLabel = result.createdAt
+    ? new Date(result.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    : null
 
   const handleShare = async () => {
     const text = `VisionWise — ${result.verdict} (${result.score}/100): ${result.reason}`
@@ -47,7 +51,9 @@ export default function VerdictCard({ result, onScanAgain, actionLabel = 'Scan a
         <div className="flex items-center gap-2 mb-4">
           <Icon size={18} className={c.text} strokeWidth={2} />
           <span className={`font-display font-bold text-base ${c.text}`}>{result.verdict}</span>
-          <span className="font-mono text-xs text-faint" style={{ fontVariantNumeric: 'tabular-nums' }}>· {score}/100 overall</span>
+          <span className="font-mono text-xs text-faint" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            · {score}/100 overall{dateLabel && ` · ${dateLabel}`}
+          </span>
         </div>
       ) : (
         <>
@@ -59,6 +65,7 @@ export default function VerdictCard({ result, onScanAgain, actionLabel = 'Scan a
             <div className="text-right">
               <span className={`font-display font-extrabold text-4xl ${c.text}`} style={{ fontVariantNumeric: 'tabular-nums' }}>{score}</span>
               <span className="font-mono text-xs text-faint"> /100</span>
+              {dateLabel && <p className="font-mono text-[10px] text-faint mt-0.5">{dateLabel}</p>}
             </div>
           </div>
 
