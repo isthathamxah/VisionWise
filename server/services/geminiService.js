@@ -77,11 +77,12 @@ export function sanitizeFood(food) {
 
   clean.nutrients = Array.isArray(food.nutrients)
     ? food.nutrients
+        .map(n => (n && typeof n === 'object' ? { ...n, amount: Number(n.amount) } : n))
         .filter(n => n?.label && Number.isFinite(n.amount))
         .slice(0, 12)
         .map(n => ({
           label: String(n.label).slice(0, 40),
-          amount: Math.max(0, n.amount),
+          amount: Math.round(Math.max(0, n.amount) * 10) / 10,
           unit: typeof n.unit === 'string' ? n.unit.slice(0, 10) : '',
           percentDV: Number.isFinite(n.percentDV) ? Math.max(0, Math.min(400, Math.round(n.percentDV))) : 0,
           impact: ['Low', 'Moderate', 'High'].includes(n.impact) ? n.impact : null,
@@ -148,7 +149,7 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
           .slice(0, 5)
           .map(b => ({ label: String(b.label).slice(0, 60), percent: Math.max(0, Math.min(100, Math.round(b.percent))) }))
       : []
-    parsed.food = sanitizeFood(parsed.food)
+    parsed.food = context === 'health' ? sanitizeFood(parsed.food) : undefined
     return parsed
   } catch (err) {
     // On rate limit, use fallback so the app keeps working

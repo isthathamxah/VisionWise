@@ -21,7 +21,7 @@ export default function NutritionPanel({ nutrients, servingNote, unclear }) {
     <div className="rounded-xl2 p-4 mb-5 bg-surface2 border border-border">
       <p className="eyebrow mb-1">Nutrition</p>
       {servingNote && <p className="text-xs text-faint mb-4">{servingNote}</p>}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {nutrients.map((n, i) => {
           const style = IMPACT_STYLES[n.impact] || { text: 'text-muted', bar: 'rgb(var(--faint))', chip: 'bg-surface border-border' }
           const fillPct = Math.min(n.percentDV, 100)
@@ -38,8 +38,13 @@ export default function NutritionPanel({ nutrients, servingNote, unclear }) {
               <p className="font-display font-bold text-lg text-text mb-1.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {n.amount}<span className="text-xs font-normal text-faint ml-1">{n.unit}</span>
               </p>
-              <div className="h-1.5 rounded-full overflow-hidden bg-surface2">
-                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${fillPct}%`, background: style.bar }} />
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 rounded-full overflow-hidden bg-surface2 flex-1">
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${fillPct}%`, background: style.bar }} />
+                </div>
+                {n.percentDV > 0 && (
+                  <span className="text-[10px] text-faint shrink-0">{n.percentDV}% DV</span>
+                )}
               </div>
               {n.note && <p className="text-xs text-muted mt-2 leading-relaxed">{n.note}</p>}
             </div>

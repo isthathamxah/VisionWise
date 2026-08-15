@@ -56,7 +56,7 @@ export default function VerdictCard({ result, onScanAgain }) {
 
       <p className="text-text leading-relaxed mb-5">{result.reason}</p>
 
-      {result.food?.isFood ? (
+      {result.food?.isFood && (result.food.unclear || result.food.nutrients?.length) ? (
         <>
           <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-4 bg-surface2 border border-border">
             <span className="font-mono text-[10px] text-faint uppercase">

@@ -70,6 +70,13 @@ test('sanitizeFood defaults an invalid impact/concern enum to null instead of gu
   assert.equal(result.ingredients[0].concern, null)
 })
 
+test('sanitizeFood survives empty nutrients/ingredients on a clear food scan', () => {
+  const result = sanitizeFood({ isFood: true, unclear: false, nutrients: [], ingredients: [] })
+  assert.equal(result.isFood, true)
+  assert.deepEqual(result.nutrients, [])
+  assert.deepEqual(result.ingredients, [])
+})
+
 test('sanitizeFood caps nutrients at 12 and ingredients at 8', () => {
   const manyNutrients = Array.from({ length: 20 }, (_, i) => ({ label: `N${i}`, amount: 1 }))
   const manyIngredients = Array.from({ length: 20 }, (_, i) => ({ name: `I${i}` }))
