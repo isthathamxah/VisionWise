@@ -59,6 +59,52 @@ function getFallbackVerdict(objectLabel, context) {
   }
 }
 
+export function sanitizeFood(food) {
+  if (!food || typeof food !== 'object' || food.isFood !== true) return undefined
+
+  const dishType = food.dishType === 'packaged' ? 'packaged' : 'dish'
+  const clean = {
+    isFood: true,
+    dishType,
+    source: dishType === 'packaged' && food.source === 'label' ? 'label' : 'estimated',
+    servingNote: typeof food.servingNote === 'string' ? food.servingNote.slice(0, 120) : '',
+    unclear: food.unclear === true,
+    nutrients: [],
+    ingredients: []
+  }
+
+  if (clean.unclear) return clean
+
+  clean.nutrients = Array.isArray(food.nutrients)
+    ? food.nutrients
+        .filter(n => n?.label && Number.isFinite(n.amount))
+        .slice(0, 12)
+        .map(n => ({
+          label: String(n.label).slice(0, 40),
+          amount: Math.max(0, n.amount),
+          unit: typeof n.unit === 'string' ? n.unit.slice(0, 10) : '',
+          percentDV: Number.isFinite(n.percentDV) ? Math.max(0, Math.min(400, Math.round(n.percentDV))) : 0,
+          impact: ['Low', 'Moderate', 'High'].includes(n.impact) ? n.impact : null,
+          note: typeof n.note === 'string' ? n.note.slice(0, 200) : ''
+        }))
+    : []
+
+  clean.ingredients = Array.isArray(food.ingredients)
+    ? food.ingredients
+        .filter(i => i?.name)
+        .slice(0, 8)
+        .map(i => ({
+          name: String(i.name).slice(0, 60),
+          whatItIs: typeof i.whatItIs === 'string' ? i.whatItIs.slice(0, 200) : '',
+          whyUsed: typeof i.whyUsed === 'string' ? i.whyUsed.slice(0, 200) : '',
+          effect: typeof i.effect === 'string' ? i.effect.slice(0, 200) : '',
+          concern: ['Low', 'Moderate', 'High'].includes(i.concern) ? i.concern : null
+        }))
+    : []
+
+  return clean
+}
+
 export async function getVerdict(objectLabel, context, imageBase64) {
   const prompt = `You are a contextual object evaluator for the VisionWise app.
 The user scanned a "${objectLabel}" and wants to evaluate it in the "${context}" context.
@@ -66,13 +112,24 @@ Your job: ${contextDescriptions[context]}.
 
 Also break the object down into 3-5 key components or factors that drove your verdict (e.g. for food: ingredients/nutrients; for a device: materials or usage factors) with a percent weight each, summing to 100.
 
+If the scanned object is food (a dish or a packaged food/drink product), additionally analyze it and include a "food" object in your JSON response. Use dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise use dishType "dish" and source "estimated". Never invent numbers: if the object is food but the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. If the object is not food, omit the "food" field entirely. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Keep each ingredient explanation to one short sentence.
+
 Respond with ONLY valid JSON (no markdown, no extra text):
 {
   "verdict": "Good" or "Bad" or "Neutral",
   "score": <integer between 0 and 100>,
   "reason": "<one clear sentence explanation>",
   "tips": ["<actionable tip 1>", "<actionable tip 2>", "<actionable tip 3>"],
-  "breakdown": [{"label": "<component or factor>", "percent": <integer, sums to 100 across items>}]
+  "breakdown": [{"label": "<component or factor>", "percent": <integer, sums to 100 across items>}],
+  "food": {
+    "isFood": <true or false>,
+    "dishType": "dish" or "packaged",
+    "source": "estimated" or "label",
+    "servingNote": "<e.g. 'Estimated for 1 plate/serving'>",
+    "unclear": <true or false>,
+    "nutrients": [{"label": "Calories", "amount": <number>, "unit": "kcal", "percentDV": <integer>, "impact": "Low" or "Moderate" or "High", "note": "<one sentence>"}],
+    "ingredients": [{"name": "<ingredient>", "whatItIs": "<one sentence>", "whyUsed": "<one sentence>", "effect": "<one sentence>", "concern": "Low" or "Moderate" or "High" or null}]
+  }
 }
 
 Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
@@ -91,6 +148,7 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
           .slice(0, 5)
           .map(b => ({ label: String(b.label).slice(0, 60), percent: Math.max(0, Math.min(100, Math.round(b.percent))) }))
       : []
+    parsed.food = sanitizeFood(parsed.food)
     return parsed
   } catch (err) {
     // On rate limit, use fallback so the app keeps working
