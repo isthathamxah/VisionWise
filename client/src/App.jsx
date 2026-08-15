@@ -11,6 +11,8 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Scanner from './pages/Scanner'
 import History from './pages/History'
+import ScanDetail from './pages/ScanDetail'
+import Account from './pages/Account'
 
 function Spinner() {
   return <div className="w-7 h-7 border-2 border-border border-t-brand rounded-full animate-spin" />
@@ -73,6 +75,8 @@ function AppRoutes() {
         <Route path="/auth/callback" element={<OAuthCallback />} />
         <Route path="/scanner"  element={<Shell footer={false}><ProtectedRoute><Scanner /></ProtectedRoute></Shell>} />
         <Route path="/history"  element={<Shell><ProtectedRoute><History /></ProtectedRoute></Shell>} />
+        <Route path="/history/:id" element={<Shell footer={false}><ProtectedRoute><ScanDetail /></ProtectedRoute></Shell>} />
+        <Route path="/account"  element={<Shell footer={false}><ProtectedRoute><Account /></ProtectedRoute></Shell>} />
         <Route path="*" element={
           <Shell footer={false}>
             <div className="flex items-center justify-center min-h-[70vh] flex-col gap-4 px-6 text-center">

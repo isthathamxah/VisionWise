@@ -42,7 +42,7 @@ export default function Navbar() {
   useEffect(() => { setOpen(false) }, [location.pathname])
 
   const links = isAuthenticated
-    ? [{ to: '/scanner', label: 'Scanner' }, { to: '/history', label: 'Dashboard' }]
+    ? [{ to: '/scanner', label: 'Scanner' }, { to: '/history', label: 'Dashboard' }, { to: '/account', label: 'Account' }]
     : [{ to: '/#how', label: 'How it works' }, { to: '/#detail', label: 'What you get' }, { to: '/#scan', label: 'What you can scan' }]
 
   const handleLogout = () => { logout(); navigate('/') }
@@ -77,9 +77,9 @@ export default function Navbar() {
           {isAuthenticated ? (
             <>
               <button onClick={handleLogout} className="btn-ghost h-10 px-4">Sign out</button>
-              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-brandSoft text-brand font-display font-bold text-sm">
+              <Link to="/account" aria-label="Account" className="flex items-center justify-center w-9 h-9 rounded-full bg-brandSoft text-brand font-display font-bold text-sm hover:opacity-80 transition-opacity">
                 {user?.name?.[0]?.toUpperCase() || 'U'}
-              </div>
+              </Link>
             </>
           ) : (
             <>
@@ -113,14 +113,8 @@ export default function Navbar() {
             ))}
           </nav>
           <div className="flex flex-col gap-2">
-            {isAuthenticated ? (
-              <button onClick={handleLogout} className="btn-outline w-full">Sign out</button>
-            ) : (
-              <>
-                <Link to="/login" className="btn-outline w-full">Sign in</Link>
-                <Link to="/register" className="btn-brand w-full">Get started</Link>
-              </>
-            )}
+            <Link to="/login" className="btn-outline w-full">Sign in</Link>
+            <Link to="/register" className="btn-brand w-full">Get started</Link>
           </div>
         </div>
       )}

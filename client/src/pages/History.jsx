@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Target, Utensils, TriangleAlert, RefreshCw } from 'lucide-react'
 import InfographicChart from '../components/InfographicChart/InfographicChart'
-import VerdictCard from '../components/VerdictCard/VerdictCard'
+import StatCard from '../components/StatCard/StatCard'
 import BottomSheet from '../components/BottomSheet/BottomSheet'
 import { useToast } from '../context/ToastContext'
 import api from '../services/api'
@@ -74,19 +75,6 @@ function usePullToRefresh(onRefresh) {
   return { pullDistance, refreshing }
 }
 
-function StatCard({ icon: Icon, label, value, sub }) {
-  return (
-    <div className="card p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-brandSoft text-brand"><Icon size={16} /></span>
-        <span className="font-mono text-[10px] uppercase tracking-wider text-faint">{label}</span>
-      </div>
-      <p className="font-display font-extrabold text-3xl text-text leading-none">{value}</p>
-      {sub && <p className="text-muted text-xs mt-1.5">{sub}</p>}
-    </div>
-  )
-}
-
 // Wraps a row with a touch/mouse-draggable reveal — dragging left exposes a
 // full-height delete action behind it, same as iOS/Android list rows. The
 // existing tap-to-open and the small delete icon both still work unchanged;
@@ -157,6 +145,7 @@ function SwipeableRow({ scan, onOpen, onDeleteRequest }) {
         <button onClick={e => { e.stopPropagation(); onDeleteRequest(scan) }}
           onKeyDown={e => e.stopPropagation()}
           onPointerDown={e => e.stopPropagation()}
+          onPointerUp={e => e.stopPropagation()}
           className="text-faint hover:text-bad transition-colors cursor-pointer p-2 -m-1 shrink-0" aria-label="Delete scan">
           <Trash2 size={15} />
         </button>
@@ -166,13 +155,13 @@ function SwipeableRow({ scan, onOpen, onDeleteRequest }) {
 }
 
 export default function History() {
+  const navigate = useNavigate()
   const showToast = useToast()
   const [scans, setScans] = useState([])
   const [analytics, setAnalytics] = useState(null)
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [selectedScan, setSelectedScan] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null) // the scan pending delete confirmation
 
   const fetchData = async () => {
@@ -244,7 +233,7 @@ export default function History() {
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">
           {scans.map(s => (
-            <SwipeableRow key={s._id} scan={s} onOpen={setSelectedScan} onDeleteRequest={setConfirmDelete} />
+            <SwipeableRow key={s._id} scan={s} onOpen={s => navigate(`/history/${s._id}`)} onDeleteRequest={setConfirmDelete} />
           ))}
         </div>
       )}
@@ -263,10 +252,6 @@ export default function History() {
           </button>
         </div>
       )}
-
-      <BottomSheet open={!!selectedScan} onClose={() => setSelectedScan(null)}>
-        {selectedScan && <VerdictCard result={selectedScan} onScanAgain={() => setSelectedScan(null)} actionLabel="Close" />}
-      </BottomSheet>
 
       <BottomSheet open={!!confirmDelete} onClose={() => setConfirmDelete(null)} maxWidth="max-w-xs">
         {confirmDelete && (
