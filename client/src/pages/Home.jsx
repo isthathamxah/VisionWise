@@ -21,17 +21,17 @@ const SCAN_ITEMS = [
   { icon: ShoppingBag, label: 'Products' }, { icon: Cpu, label: 'Electronics' },
 ]
 
+const STEPS = [
+  { icon: ScanLine, k: '01', title: 'Point your camera', line: 'The model detects the object live, right in your browser. Nothing uploaded.' },
+  { icon: Sparkles, k: '02', title: 'Get real nutrition data', line: 'Ingredients, nutrients and impact — estimated from a dish, or read straight off a package label.' },
+  { icon: ShieldCheck, k: '03', title: 'See an honest verdict', line: 'A score from 0–100, a plain-English reason, and one useful tip.' },
+]
+
 const CAPABILITIES = [
   { icon: Utensils,    name: 'Nutrition estimate',  tone: 'good',    line: 'Calories, fiber, sugar and more — estimated straight from a photo of your plate.' },
   { icon: ScanBarcode, name: 'Label reading',        tone: 'good',    line: 'Point it at packaging and it reads the real ingredients and nutrition facts.' },
   { icon: Sparkles,    name: 'Ingredient breakdown', tone: 'neutral', line: 'What each ingredient is, why it\'s there, and what it does in your body.' },
   { icon: ShieldCheck, name: 'Honest framing',       tone: 'neutral', line: 'Low, moderate or high impact — never a blanket healthy or unhealthy label.' },
-]
-
-const STEPS = [
-  { icon: ScanLine, k: '01', title: 'Point your camera', line: 'The model detects the object live, right in your browser. Nothing uploaded.' },
-  { icon: Sparkles, k: '02', title: 'Get real nutrition data', line: 'Ingredients, nutrients and impact — estimated from a dish, or read straight off a package label.' },
-  { icon: ShieldCheck, k: '03', title: 'See an honest verdict', line: 'A score from 0–100, a plain-English reason, and one useful tip.' },
 ]
 
 const TREND = [
@@ -46,6 +46,18 @@ const SPLIT = [
 const toneText = { good: 'text-good', neutral: 'text-neutral', bad: 'text-bad' }
 const toneBg   = { good: 'bg-good/10', neutral: 'bg-neutral/10', bad: 'bg-bad/10' }
 
+// Horizontal swipe-carousel of cards — peeks the next card at the edge so it
+// reads as "swipe me" rather than a stacked website feature grid.
+function Carousel({ label, children }) {
+  return (
+    <div tabIndex={0} role="group" aria-label={label}
+      className="flex gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-5 px-5 sm:mx-0 sm:px-0
+                     md:grid md:grid-cols-3 md:overflow-visible md:gap-5 focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2 rounded-xl2">
+      {children}
+    </div>
+  )
+}
+
 export default function Home() {
   const { isAuthenticated } = useAuth()
   const [stats, setStats] = useState(null)
@@ -59,45 +71,44 @@ export default function Home() {
   return (
     <div ref={reveal}>
 
-      {/* ═══ HERO ═══ */}
+      {/* ═══ HERO — visual first, like an app-store listing, not a website banner ═══ */}
       <section className="relative overflow-hidden grid-bg">
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] brand-glow blur-3xl opacity-60 pointer-events-none" />
-        <div className="container-vw pt-10 pb-12 md:pt-24 md:pb-24">
-          <div className="grid lg:grid-cols-2 gap-14 items-center">
+        <div className="container-vw pt-8 pb-10 md:pt-24 md:pb-24">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+
+            {/* Phone — shown first on mobile, right-aligned column on desktop */}
+            <div className="order-1 lg:order-2 animate-float lg:justify-self-end">
+              <PhoneMockup />
+            </div>
 
             {/* Copy */}
-            <div className="animate-reveal">
-              <span className="chip mb-6">
+            <div className="order-2 lg:order-1 animate-reveal text-center lg:text-left">
+              <span className="chip mb-5 mx-auto lg:mx-0">
                 <Sparkles size={12} className="text-brand" /> AI-powered nutrition scanner
               </span>
               <h1 className="font-display font-extrabold tracking-tight text-text leading-[1.05] text-balance"
-                style={{ fontSize: 'clamp(2.5rem, 6vw, 4rem)' }}>
+                style={{ fontSize: 'clamp(2.25rem, 7vw, 4rem)' }}>
                 Point your camera.<br />
                 Know what&apos;s <span className="text-brand">really in it.</span>
               </h1>
-              <p className="text-muted text-lg leading-relaxed mt-6 max-w-lg">
-                VisionWise reads your food — real nutrition data, honest ingredient breakdowns,
-                no guessing — and tells you plainly whether it&apos;s good, neutral or bad for you.
+              <p className="text-muted leading-relaxed mt-4 max-w-lg mx-auto lg:mx-0">
+                Real nutrition data, honest ingredient breakdowns, no guessing.
               </p>
-              <div className="flex flex-wrap gap-3 mt-8">
+              <div className="flex flex-wrap justify-center lg:justify-start gap-3 mt-7">
                 <Link to={isAuthenticated ? '/scanner' : '/register'} className="btn-brand">
                   {isAuthenticated ? 'Open scanner' : 'Start scanning free'} <ArrowRight size={16} />
                 </Link>
                 <a href="#how" className="btn-outline">See how it works</a>
               </div>
-              <div className="flex items-center gap-6 mt-10">
-                {[['80+', 'object types'], ['7+', 'nutrients tracked'], ['0–100', 'verdict score']].map(([n, l]) => (
-                  <div key={l}>
-                    <p className="font-display font-extrabold text-2xl text-text">{n}</p>
-                    <p className="font-mono text-[11px] text-faint uppercase tracking-wider mt-0.5">{l}</p>
+              <div className="flex items-center justify-center lg:justify-start gap-5 mt-8">
+                {[['80+', 'object types'], ['7+', 'nutrients'], ['0–100', 'score']].map(([n, l]) => (
+                  <div key={l} className="text-center lg:text-left">
+                    <p className="font-display font-extrabold text-xl text-text">{n}</p>
+                    <p className="font-mono text-[10px] text-faint uppercase tracking-wider mt-0.5">{l}</p>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Phone */}
-            <div className="animate-float lg:justify-self-end">
-              <PhoneMockup />
             </div>
           </div>
         </div>
@@ -105,8 +116,8 @@ export default function Home() {
 
       {/* ═══ WHAT YOU CAN SCAN ═══ */}
       <section id="scan" className="border-y border-border bg-surface2/40 overflow-hidden">
-        <div className="container-vw py-10">
-          <p className="text-center font-mono text-xs uppercase tracking-widest text-faint mb-7">
+        <div className="container-vw py-8">
+          <p className="text-center font-mono text-xs uppercase tracking-widest text-faint mb-6">
             Point it at almost anything
           </p>
           <div className="relative">
@@ -125,159 +136,129 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══ HOW IT WORKS ═══ */}
-      <section id="how" className="container-vw py-14 md:py-28">
-        <div className="max-w-2xl mb-10 md:mb-14 reveal-on-scroll">
+      {/* ═══ HOW IT WORKS — swipeable, not a stacked grid ═══ */}
+      <section id="how" className="py-12 md:py-24">
+        <div className="container-vw max-w-2xl mb-6 md:mb-14 reveal-on-scroll">
           <span className="eyebrow">How it works</span>
-          <h2 className="font-display font-extrabold text-text mt-3 leading-tight" style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>
+          <h2 className="font-display font-extrabold text-text mt-3 leading-tight" style={{ fontSize: 'clamp(1.7rem, 4vw, 2.6rem)' }}>
             From camera to verdict in three seconds.
           </h2>
         </div>
-        <div className="grid md:grid-cols-3 gap-5">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon
-            return (
-              <div key={s.k} className="card p-7 reveal-on-scroll" style={{ transitionDelay: `${i * 90}ms` }}>
-                <div className="flex items-center justify-between mb-5">
-                  <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-brandSoft text-brand">
-                    <Icon size={20} strokeWidth={2} />
-                  </span>
-                  <span className="font-mono text-sm text-faint">{s.k}</span>
-                </div>
-                <h3 className="font-display font-bold text-lg text-text mb-2">{s.title}</h3>
-                <p className="text-muted text-sm leading-relaxed">{s.line}</p>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* ═══ CAPABILITIES ═══ */}
-      <section id="detail" className="bg-surface2/40 border-y border-border">
-        <div className="container-vw py-14 md:py-28">
-          <div className="grid lg:grid-cols-2 gap-14 items-start">
-            <div className="lg:sticky lg:top-24 reveal-on-scroll">
-              <span className="eyebrow">What you get</span>
-              <h2 className="font-display font-extrabold text-text mt-3 leading-tight" style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>
-                Not just a score. The real picture.
-              </h2>
-              <p className="text-muted text-lg leading-relaxed mt-5 max-w-md">
-                Point it at your food and get more than good or bad — real numbers, real
-                ingredients, explained plainly.
-              </p>
-              <Link to={isAuthenticated ? '/scanner' : '/register'} className="btn-brand mt-8">
-                Try it now <ArrowRight size={16} />
-              </Link>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {CAPABILITIES.map((l, i) => {
-                const Icon = l.icon
-                return (
-                  <div key={l.name} className="card p-6 reveal-on-scroll hover:-translate-y-1 transition-transform" style={{ transitionDelay: `${i * 70}ms` }}>
-                    <span className={`flex items-center justify-center w-11 h-11 rounded-xl mb-4 ${toneBg[l.tone]} ${toneText[l.tone]}`}>
+        <div className="container-vw">
+          <Carousel label="How it works">
+            {STEPS.map((s, i) => {
+              const Icon = s.icon
+              return (
+                <div key={s.k} className="snap-center shrink-0 w-[78%] sm:w-72 md:w-auto card p-6 reveal-on-scroll" style={{ transitionDelay: `${i * 90}ms` }}>
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="flex items-center justify-center w-11 h-11 rounded-xl bg-brandSoft text-brand">
                       <Icon size={20} strokeWidth={2} />
                     </span>
-                    <h3 className="font-display font-bold text-text mb-1.5">{l.name}</h3>
-                    <p className="text-muted text-sm leading-relaxed">{l.line}</p>
+                    <span className="font-mono text-sm text-faint">{s.k}</span>
                   </div>
-                )
-              })}
-            </div>
-          </div>
+                  <h3 className="font-display font-bold text-lg text-text mb-2">{s.title}</h3>
+                  <p className="text-muted text-sm leading-relaxed">{s.line}</p>
+                </div>
+              )
+            })}
+          </Carousel>
         </div>
       </section>
 
-      {/* ═══ DASHBOARD / VISUALIZATION ═══ */}
-      <section className="container-vw py-14 md:py-28">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="reveal-on-scroll">
-            <span className="eyebrow">Your dashboard</span>
-            <h2 className="font-display font-extrabold text-text mt-3 leading-tight" style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>
-              Every scan, tracked and visualized.
-            </h2>
-            <p className="text-muted text-lg leading-relaxed mt-5 max-w-md">
-              VisionWise remembers what you scan and turns it into trends — so you can see your
-              habits shift over time.
-            </p>
-            <ul className="mt-7 flex flex-col gap-3">
-              {['Weekly activity and average score', 'Verdict breakdown across all scans', 'Full nutrition detail on every past scan'].map(t => (
-                <li key={t} className="flex items-center gap-3 text-sm text-text">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-brandSoft text-brand shrink-0">
-                    <ShieldCheck size={12} />
+      {/* ═══ CAPABILITIES — swipeable, not a stacked grid ═══ */}
+      <section id="detail" className="bg-surface2/40 border-y border-border py-12 md:py-24">
+        <div className="container-vw max-w-2xl mb-6 md:mb-14 reveal-on-scroll">
+          <span className="eyebrow">What you get</span>
+          <h2 className="font-display font-extrabold text-text mt-3 leading-tight" style={{ fontSize: 'clamp(1.7rem, 4vw, 2.6rem)' }}>
+            Not just a score. The real picture.
+          </h2>
+        </div>
+        <div className="container-vw">
+          <Carousel label="What you get">
+            {CAPABILITIES.map((l, i) => {
+              const Icon = l.icon
+              return (
+                <div key={l.name} className="snap-center shrink-0 w-[78%] sm:w-72 md:w-auto card p-6 reveal-on-scroll" style={{ transitionDelay: `${i * 70}ms` }}>
+                  <span className={`flex items-center justify-center w-11 h-11 rounded-xl mb-4 ${toneBg[l.tone]} ${toneText[l.tone]}`}>
+                    <Icon size={20} strokeWidth={2} />
                   </span>
-                  {t}
-                </li>
-              ))}
-            </ul>
+                  <h3 className="font-display font-bold text-text mb-1.5">{l.name}</h3>
+                  <p className="text-muted text-sm leading-relaxed">{l.line}</p>
+                </div>
+              )
+            })}
+          </Carousel>
+        </div>
+        <div className="container-vw mt-8 text-center md:text-left reveal-on-scroll">
+          <Link to={isAuthenticated ? '/scanner' : '/register'} className="btn-brand">
+            Try it now <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
+
+      {/* ═══ DASHBOARD PREVIEW — one teaser card, not a marketing feature block ═══ */}
+      <section className="container-vw py-12 md:py-24">
+        <div className="max-w-md mx-auto text-center mb-6 reveal-on-scroll">
+          <span className="eyebrow">Your dashboard</span>
+          <h2 className="font-display font-extrabold text-text mt-3 leading-tight" style={{ fontSize: 'clamp(1.7rem, 4vw, 2.6rem)' }}>
+            Every scan, tracked and visualized.
+          </h2>
+        </div>
+
+        <div className="max-w-md mx-auto card p-6 md:p-7 reveal-on-scroll">
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <p className="eyebrow mb-1.5">This week</p>
+              <p className="font-display font-extrabold text-3xl text-text">
+                {stats?.weeklyScore ?? 74}<span className="text-faint text-lg font-mono"> /100</span>
+              </p>
+              <p className="text-muted text-sm mt-1">Average verdict score</p>
+            </div>
+            <div className="chip text-brand"><span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse-dot" /> live</div>
           </div>
 
-          {/* Chart card */}
-          <div className="card p-6 md:p-7 reveal-on-scroll">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <p className="eyebrow mb-1.5">This week</p>
-                <p className="font-display font-extrabold text-3xl text-text">
-                  {stats?.weeklyScore ?? 74}<span className="text-faint text-lg font-mono"> /100</span>
-                </p>
-                <p className="text-muted text-sm mt-1">Average verdict score</p>
-              </div>
-              <div className="chip text-brand"><span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse-dot" /> live</div>
+          <div className="grid grid-cols-3 gap-5 items-center">
+            <div className="col-span-2">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint mb-2">Scans / day</p>
+              <ResponsiveContainer width="100%" height={130}>
+                <BarChart data={TREND} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                  <XAxis dataKey="d" tick={{ fill: 'rgb(var(--faint))', fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
+                  <Bar dataKey="v" radius={[4, 4, 0, 0]}>
+                    {TREND.map((_, i) => <Cell key={i} fill="rgb(var(--brand))" />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-
-            <div className="grid grid-cols-3 gap-5 items-center">
-              {/* bar trend */}
-              <div className="col-span-2">
-                <p className="font-mono text-[10px] uppercase tracking-wider text-faint mb-2">Scans / day</p>
-                <ResponsiveContainer width="100%" height={130}>
-                  <BarChart data={TREND} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                    <XAxis dataKey="d" tick={{ fill: 'rgb(var(--faint))', fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
-                    <Bar dataKey="v" radius={[4, 4, 0, 0]}>
-                      {TREND.map((_, i) => <Cell key={i} fill="rgb(var(--brand))" />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              {/* donut split */}
-              <div className="relative">
-                <p className="font-mono text-[10px] uppercase tracking-wider text-faint mb-2 text-center">Split</p>
-                <ResponsiveContainer width="100%" height={110}>
-                  <PieChart>
-                    <Pie data={SPLIT} dataKey="value" innerRadius={30} outerRadius={48} paddingAngle={3} stroke="none">
-                      {SPLIT.map((s, i) => <PieCell key={i} fill={s.fill} />)}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="relative">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint mb-2 text-center">Split</p>
+              <ResponsiveContainer width="100%" height={110}>
+                <PieChart>
+                  <Pie data={SPLIT} dataKey="value" innerRadius={30} outerRadius={48} paddingAngle={3} stroke="none">
+                    {SPLIT.map((s, i) => <PieCell key={i} fill={s.fill} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-            <div className="flex items-center justify-center gap-4 mt-3">
-              {SPLIT.map(s => (
-                <span key={s.name} className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-                  <span className="w-2 h-2 rounded-full" style={{ background: s.fill }} />
-                  {s.name} {s.value}%
-                </span>
-              ))}
-            </div>
+          </div>
+          <div className="flex items-center justify-center gap-4 mt-3">
+            {SPLIT.map(s => (
+              <span key={s.name} className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+                <span className="w-2 h-2 rounded-full" style={{ background: s.fill }} />
+                {s.name} {s.value}%
+              </span>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ CTA ═══ */}
-      <section className="container-vw pb-8">
-        <div className="relative overflow-hidden rounded-xl2 border border-border p-8 md:p-16 text-center reveal-on-scroll"
-          style={{ background: 'linear-gradient(135deg, rgb(var(--brand) / 0.12), rgb(var(--surface2)))' }}>
-          <div className="absolute inset-0 grid-bg opacity-50 pointer-events-none" />
-          <div className="relative">
-            <h2 className="font-display font-extrabold text-text leading-tight max-w-2xl mx-auto" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)' }}>
-              Ready to see what you&apos;re really holding?
-            </h2>
-            <p className="text-muted text-lg mt-4 max-w-lg mx-auto">
-              Free to use, works in your browser, no app to install.
-            </p>
-            <Link to={isAuthenticated ? '/scanner' : '/register'} className="btn-brand mt-8 h-12 px-8 text-base">
-              {isAuthenticated ? 'Open scanner' : 'Get started free'} <ArrowRight size={18} />
-            </Link>
-          </div>
-        </div>
+      {/* ═══ CTA — plain, direct, no boxed marketing banner ═══ */}
+      <section className="container-vw pb-16 text-center reveal-on-scroll">
+        <h2 className="font-display font-extrabold text-text leading-tight max-w-xl mx-auto" style={{ fontSize: 'clamp(1.8rem, 5vw, 2.75rem)' }}>
+          Ready to see what you&apos;re really holding?
+        </h2>
+        <Link to={isAuthenticated ? '/scanner' : '/register'} className="btn-brand mt-6 h-12 px-8 text-base">
+          {isAuthenticated ? 'Open scanner' : 'Get started free'} <ArrowRight size={18} />
+        </Link>
       </section>
 
     </div>
