@@ -59,6 +59,7 @@ export default function Scanner() {
 
   const handleCapture = () => {
     if (!videoRef.current) return
+    setScanResult(null); setScanError('') // matches every other mode transition — don't leave a stale verdict showing
     setCapturedPreview(captureFrame(videoRef.current))
   }
 
@@ -188,8 +189,8 @@ export default function Scanner() {
               {!uploadedSrc && !capturedPreview && (
                 <div className="absolute top-3 right-3 flex items-center gap-2">
                   {isReady && (
-                    <button onClick={handleCapture}
-                      className="p-2.5 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
+                    <button onClick={handleCapture} disabled={isScanning}
+                      className="p-2.5 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Take picture">
                       <Aperture size={17} />
                     </button>
