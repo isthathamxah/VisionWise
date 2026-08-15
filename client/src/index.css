@@ -40,10 +40,11 @@
 
 @layer base {
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; overscroll-behavior-y: contain; }
   body {
     @apply bg-bg text-text font-sans antialiased;
     min-height: 100dvh;
+    overscroll-behavior-y: contain;
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.3s ease, color 0.3s ease;
   }

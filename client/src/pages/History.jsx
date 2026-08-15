@@ -11,50 +11,63 @@ const verdictDot  = { Good: 'bg-good',  Bad: 'bg-bad',  Neutral: 'bg-neutral' }
 
 const PULL_MAX = 90
 const PULL_THRESHOLD = 60
+const PULL_TRIGGER = PULL_THRESHOLD * 0.6 // distance that actually fires a refresh — indicator ramps to this same point
 
 // Pulls the page's refresh gesture out of the component — a ref mirrors the drag
 // state so the touch listeners don't need to re-subscribe on every pixel moved.
+// Side effects (the refresh call, setRefreshing) live in the touchend handler,
+// never inside a setState updater — StrictMode double-invokes updaters in dev,
+// which would otherwise fire the refresh twice.
 function usePullToRefresh(onRefresh) {
   const [pullDistance, setPullDistance] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
-  const drag = useRef({ startY: 0, dragging: false })
+  const drag = useRef({ startX: 0, startY: 0, dragging: false, refreshing: false, distance: 0 })
 
   useEffect(() => {
     const onStart = e => {
-      if (window.scrollY > 0 || drag.current.refreshing) return
+      if (window.scrollY > 0 || drag.current.refreshing || e.touches.length !== 1) return
+      if (e.target.closest('[data-swipe-row]')) return // a row-swipe owns this gesture instead
+      drag.current.startX = e.touches[0].clientX
       drag.current.startY = e.touches[0].clientY
       drag.current.dragging = true
     }
     const onMove = e => {
-      if (!drag.current.dragging) return
-      const delta = e.touches[0].clientY - drag.current.startY
-      if (delta > 0 && window.scrollY === 0) {
-        setPullDistance(Math.min(PULL_MAX, delta * 0.5))
+      if (!drag.current.dragging || e.touches.length !== 1) return
+      const dy = e.touches[0].clientY - drag.current.startY
+      const dx = e.touches[0].clientX - drag.current.startX
+      if (dy > 0 && dy > Math.abs(dx) && window.scrollY === 0) {
+        const next = Math.min(PULL_MAX, dy * 0.5)
+        drag.current.distance = next
+        setPullDistance(next)
       } else {
         drag.current.dragging = false
+        drag.current.distance = 0
         setPullDistance(0)
       }
     }
-    const onEnd = async () => {
+    const settle = () => {
       if (!drag.current.dragging) return
       drag.current.dragging = false
-      setPullDistance(current => {
-        if (current > PULL_THRESHOLD * 0.6) {
-          drag.current.refreshing = true
-          setRefreshing(true)
-          Promise.resolve(onRefresh()).finally(() => { drag.current.refreshing = false; setRefreshing(false) })
-          return PULL_THRESHOLD * 0.6
-        }
-        return 0
-      })
+      if (drag.current.distance > PULL_TRIGGER) {
+        drag.current.refreshing = true
+        drag.current.distance = PULL_TRIGGER
+        setRefreshing(true)
+        setPullDistance(PULL_TRIGGER)
+        Promise.resolve(onRefresh()).finally(() => { drag.current.refreshing = false; setRefreshing(false) })
+      } else {
+        drag.current.distance = 0
+        setPullDistance(0)
+      }
     }
     window.addEventListener('touchstart', onStart, { passive: true })
     window.addEventListener('touchmove', onMove, { passive: true })
-    window.addEventListener('touchend', onEnd)
+    window.addEventListener('touchend', settle)
+    window.addEventListener('touchcancel', settle)
     return () => {
       window.removeEventListener('touchstart', onStart)
       window.removeEventListener('touchmove', onMove)
-      window.removeEventListener('touchend', onEnd)
+      window.removeEventListener('touchend', settle)
+      window.removeEventListener('touchcancel', settle)
     }
   }, [onRefresh])
 
@@ -84,6 +97,7 @@ function SwipeableRow({ scan, onOpen, onDeleteRequest }) {
   const drag = useRef({ startX: 0, baseX: 0, dragging: false, moved: false })
 
   const onPointerDown = e => {
+    e.currentTarget.setPointerCapture(e.pointerId) // keeps the drag on this row even if the finger drifts onto a neighbor
     drag.current = { startX: e.clientX, baseX: translateX, dragging: true, moved: false }
   }
   const onPointerMove = e => {
@@ -105,9 +119,12 @@ function SwipeableRow({ scan, onOpen, onDeleteRequest }) {
     onOpen(scan)
   }
 
+  const revealed = translateX !== 0
+
   return (
-    <div className="relative overflow-hidden rounded-xl2">
+    <div className="relative overflow-hidden rounded-xl2" data-swipe-row>
       <button onClick={() => { setTranslateX(0); onDeleteRequest(scan) }}
+        tabIndex={revealed ? 0 : -1} aria-hidden={!revealed}
         className="absolute inset-y-0 right-0 w-20 flex items-center justify-center bg-bad text-white cursor-pointer" aria-label={`Delete ${scan.objectLabel} scan`}>
         <Trash2 size={18} />
       </button>
@@ -188,9 +205,9 @@ export default function History() {
 
   return (
     <div className="container-vw py-8 md:py-10">
-      <div className="flex items-center justify-center overflow-hidden transition-[height] duration-150" style={{ height: refreshing ? PULL_THRESHOLD * 0.6 : pullDistance }}>
+      <div className="flex items-center justify-center overflow-hidden transition-[height] duration-150" style={{ height: refreshing ? PULL_TRIGGER : pullDistance }}>
         <RefreshCw size={18} className={`text-brand ${refreshing ? 'animate-spin' : ''}`}
-          style={{ transform: refreshing ? undefined : `rotate(${pullDistance * 3}deg)`, opacity: Math.min(1, pullDistance / PULL_THRESHOLD) }} />
+          style={{ transform: refreshing ? undefined : `rotate(${pullDistance * 3}deg)`, opacity: Math.min(1, pullDistance / PULL_TRIGGER) }} />
       </div>
 
       <div className="mb-8">

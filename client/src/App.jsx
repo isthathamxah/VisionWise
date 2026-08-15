@@ -53,7 +53,7 @@ function Shell({ children, footer = true }) {
   return (
     <div className="min-h-dvh bg-bg flex flex-col">
       <Navbar />
-      <main className={`flex-1 pt-16 ${isAuthenticated ? 'pb-20 md:pb-0' : ''}`}>{children}</main>
+      <main className={`flex-1 pt-16 ${isAuthenticated ? 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>{children}</main>
       {footer && <Footer />}
       {isAuthenticated && <BottomNav />}
     </div>
