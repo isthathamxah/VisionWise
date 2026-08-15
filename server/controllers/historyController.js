@@ -18,6 +18,16 @@ export const getHistory = async (req, res) => {
   }
 }
 
+export const getScanById = async (req, res) => {
+  try {
+    const scan = await ScanLog.findOne({ _id: req.params.id, userId: req.user._id }).lean()
+    if (!scan) return res.status(404).json({ error: 'Scan not found' })
+    res.json(scan)
+  } catch {
+    res.status(404).json({ error: 'Scan not found' })
+  }
+}
+
 export const getAnalytics = async (req, res) => {
   const days = Math.min(30, parseInt(req.query.days) || 7)
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
