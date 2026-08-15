@@ -29,6 +29,7 @@ export default function Scanner() {
 
   const fileInputRef = useRef(null)
   const uploadImgRef = useRef(null)
+  const uploadTokenRef = useRef(0) // invalidates in-flight detection when superseded by a new upload or a switch back to camera
   const [uploadedSrc, setUploadedSrc] = useState(null)
   const [uploadPrediction, setUploadPrediction] = useState(null)
   const [isDetectingUpload, setIsDetectingUpload] = useState(false)
@@ -45,25 +46,37 @@ export default function Scanner() {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file later
     if (!file) return
-    setScanResult(null); setScanError(''); setUploadPrediction(null)
+    uploadTokenRef.current += 1
+    setScanResult(null); setScanError(''); setUploadPrediction(null); setIsDetectingUpload(true)
+    stopCamera() // release the camera while a static photo is shown
     const reader = new FileReader()
     reader.onload = () => setUploadedSrc(reader.result)
     reader.readAsDataURL(file)
   }
 
   const handleUploadImgLoad = async () => {
-    if (!uploadImgRef.current) return
-    setIsDetectingUpload(true)
+    const token = uploadTokenRef.current
+    if (!uploadImgRef.current) { setIsDetectingUpload(false); return }
     try {
       const preds = await detectImage(uploadImgRef.current)
+      if (uploadTokenRef.current !== token) return // a newer upload or a camera switch happened meanwhile
       setUploadPrediction(preds[0] || null)
     } finally {
-      setIsDetectingUpload(false)
+      if (uploadTokenRef.current === token) setIsDetectingUpload(false)
     }
   }
 
+  const handleUploadImgError = () => {
+    uploadTokenRef.current += 1
+    setUploadedSrc(null); setUploadPrediction(null); setIsDetectingUpload(false)
+    setScanError('Could not load that image. Try a different file.')
+    startCamera()
+  }
+
   const useCameraInstead = () => {
-    setUploadedSrc(null); setUploadPrediction(null); setScanResult(null); setScanError('')
+    uploadTokenRef.current += 1
+    setUploadedSrc(null); setUploadPrediction(null); setScanResult(null); setScanError(''); setIsDetectingUpload(false)
+    startCamera()
   }
 
   const handleScan = async () => {
@@ -115,6 +128,7 @@ export default function Scanner() {
                   ref={uploadImgRef}
                   src={uploadedSrc}
                   onLoad={handleUploadImgLoad}
+                  onError={handleUploadImgError}
                   alt="Uploaded scan"
                   className="w-full h-full object-cover"
                 />
@@ -154,7 +168,7 @@ export default function Scanner() {
                 </div>
               )}
 
-              {isDetectingUpload && (
+              {uploadedSrc && isDetectingUpload && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/75">
                   <div className="w-7 h-7 border-2 border-white/20 border-t-brand rounded-full animate-spin" />
                   <span className="font-mono text-xs text-white/80 uppercase tracking-wider">Detecting</span>
