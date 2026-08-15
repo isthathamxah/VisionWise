@@ -89,27 +89,19 @@ export async function getVerdict(objectLabel, imageBase64) {
   const prompt = `You are a health and nutrition evaluator for the VisionWise app.
 The user scanned a "${objectLabel}" and wants to know whether it's good, neutral or bad for their health.
 
-Break the object down into 3-5 key components or factors that drove your verdict, with a percent weight each summing to 100 — UNLESS the object is food, in which case return an empty breakdown array (the nutrition data below covers that role instead).
+STEP 1 — decide isFood first, before anything else. isFood is true ONLY if the object itself is something a person eats or drinks: a meal, snack, drink, fruit, or packaged food/drink product. Everything else — electronics, tools, furniture, stationery, vehicles, appliances, clothing, toys, books, containers/dishware with nothing in them, animals, people, plants that aren't produce — is NOT food, full stop, even if food happens to be visible nearby or in the background. When unsure, isFood is false. Object labels from a generic detector (like "${objectLabel}") are sometimes wrong or vague — trust what you actually see in the image over the label.
 
-If the scanned object is food (a dish or a packaged food/drink product), additionally analyze it and include a "food" object in your JSON response. Use dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise use dishType "dish" and source "estimated". Never invent numbers: if the object is food but the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. If the object is not food, omit the "food" field entirely. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Also set each nutrient's "direction" to "limit" (something people should generally moderate in large amounts, e.g. sugar, sodium, saturated fat), "beneficial" (generally good in reasonable amounts, e.g. fiber, protein, vitamins), or "neutral" (neither clearly applies) — this drives how it's color-coded, separately from how much of it is present. Keep each ingredient explanation to one short sentence.
+STEP 2 — if isFood is false: set the top-level "food" key to null and instead break the object down into 3-5 key components or factors that drove your verdict, with a percent weight each summing to 100, in "breakdown".
 
-Respond with ONLY valid JSON (no markdown, no extra text):
-{
-  "verdict": "Good" or "Bad" or "Neutral",
-  "score": <integer between 0 and 100>,
-  "reason": "<one clear sentence explanation>",
-  "tips": ["<actionable tip 1>", "<actionable tip 2>", "<actionable tip 3>"],
-  "breakdown": [{"label": "<component or factor>", "percent": <integer, sums to 100 across items>}],
-  "food": {
-    "isFood": <true or false>,
-    "dishType": "dish" or "packaged",
-    "source": "estimated" or "label",
-    "servingNote": "<e.g. 'Estimated for 1 plate/serving'>",
-    "unclear": <true or false>,
-    "nutrients": [{"label": "Calories", "amount": <number>, "unit": "kcal", "percentDV": <integer>, "impact": "Low" or "Moderate" or "High", "direction": "limit" or "beneficial" or "neutral", "note": "<one sentence>"}],
-    "ingredients": [{"name": "<ingredient>", "whatItIs": "<one sentence>", "whyUsed": "<one sentence>", "effect": "<one sentence>", "concern": "Low" or "Moderate" or "High" or null}]
-  }
-}
+STEP 3 — if isFood is true: set "breakdown" to an empty array (the nutrition data below covers that role instead) and fill in "food": dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise dishType "dish" and source "estimated". Never invent numbers: if the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Set each nutrient's "direction" to "limit" (something people should generally moderate in large amounts, e.g. sugar, sodium, saturated fat), "beneficial" (generally good in reasonable amounts, e.g. fiber, protein, vitamins), or "neutral" (neither clearly applies) — this drives how it's color-coded, separately from how much of it is present. Keep each ingredient explanation to one short sentence.
+
+Respond with ONLY valid JSON (no markdown, no extra text), matching ONE of these two shapes exactly depending on your Step 1 decision:
+
+Non-food shape ("food" is literally null):
+{"verdict": "...", "score": <0-100>, "reason": "...", "tips": ["...", "...", "..."], "breakdown": [{"label": "...", "percent": <int, sums to 100>}], "food": null}
+
+Food shape ("breakdown" is empty, "food" is fully filled in):
+{"verdict": "...", "score": <0-100>, "reason": "...", "tips": ["...", "...", "..."], "breakdown": [], "food": {"isFood": true, "dishType": "dish" or "packaged", "source": "estimated" or "label", "servingNote": "<e.g. 'Estimated for 1 plate/serving'>", "unclear": <true or false>, "nutrients": [{"label": "Calories", "amount": <number>, "unit": "kcal", "percentDV": <integer>, "impact": "Low" or "Moderate" or "High", "direction": "limit" or "beneficial" or "neutral", "note": "<one sentence>"}], "ingredients": [{"name": "...", "whatItIs": "<one sentence>", "whyUsed": "<one sentence>", "effect": "<one sentence>", "concern": "Low" or "Moderate" or "High" or null}]}}
 
 Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
 
