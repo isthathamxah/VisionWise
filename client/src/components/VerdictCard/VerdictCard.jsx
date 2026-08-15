@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Share2, Wifi } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Share2, Wifi, Sparkles, Tag } from 'lucide-react'
 import BreakdownChart from '../InfographicChart/BreakdownChart'
 import NutritionPanel from '../InfographicChart/NutritionPanel'
 import IngredientInfographic from '../InfographicChart/IngredientInfographic'
@@ -30,6 +30,8 @@ export default function VerdictCard({ result, onScanAgain }) {
   const c = cfg[result.verdict] || cfg.Neutral
   const Icon = c.icon
   const isFallback = result.fallback === true
+  const isFood = result.food?.isFood && (result.food.unclear || result.food.nutrients?.length)
+  const isLabelRead = result.food?.source === 'label'
 
   const handleShare = async () => {
     const text = `VisionWise — ${result.verdict} (${result.score}/100): ${result.reason}`
@@ -39,31 +41,44 @@ export default function VerdictCard({ result, onScanAgain }) {
 
   return (
     <div className={`card p-6 animate-reveal border ${c.soft}`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <Icon size={26} className={c.text} strokeWidth={2} />
-          <span className={`font-display font-extrabold text-2xl ${c.text}`}>{result.verdict}</span>
+      {isFood ? (
+        // Nutrition is the primary content for a food scan — the headline verdict stays
+        // visible but compact instead of competing with it for attention.
+        <div className="flex items-center gap-2 mb-4">
+          <Icon size={18} className={c.text} strokeWidth={2} />
+          <span className={`font-display font-bold text-base ${c.text}`}>{result.verdict}</span>
+          <span className="font-mono text-xs text-faint" style={{ fontVariantNumeric: 'tabular-nums' }}>· {score}/100 overall</span>
         </div>
-        <div className="text-right">
-          <span className={`font-display font-extrabold text-4xl ${c.text}`} style={{ fontVariantNumeric: 'tabular-nums' }}>{score}</span>
-          <span className="font-mono text-xs text-faint"> /100</span>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <Icon size={26} className={c.text} strokeWidth={2} />
+              <span className={`font-display font-extrabold text-2xl ${c.text}`}>{result.verdict}</span>
+            </div>
+            <div className="text-right">
+              <span className={`font-display font-extrabold text-4xl ${c.text}`} style={{ fontVariantNumeric: 'tabular-nums' }}>{score}</span>
+              <span className="font-mono text-xs text-faint"> /100</span>
+            </div>
+          </div>
 
-      <div className="h-1.5 rounded-full mb-5 overflow-hidden bg-surface2">
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: c.bar }} />
-      </div>
+          <div className="h-1.5 rounded-full mb-5 overflow-hidden bg-surface2">
+            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: c.bar }} />
+          </div>
+        </>
+      )}
 
       <p className="text-text leading-relaxed mb-5">{result.reason}</p>
 
-      {result.food?.isFood && (result.food.unclear || result.food.nutrients?.length) ? (
+      {isFood ? (
         <>
           <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-4 bg-surface2 border border-border">
+            {isLabelRead ? <Tag size={13} className="text-faint shrink-0" /> : <Sparkles size={13} className="text-faint shrink-0" />}
             <span className="font-mono text-[10px] text-faint uppercase">
-              {result.food.source === 'label' ? 'Read from package label' : 'Estimated from photo'}
+              {isLabelRead ? 'Read from package label' : 'Estimated from photo'}
             </span>
           </div>
-          <NutritionPanel nutrients={result.food.nutrients} servingNote={result.food.servingNote} unclear={result.food.unclear} />
+          <NutritionPanel nutrients={result.food.nutrients} servingNote={result.food.servingNote} unclear={result.food.unclear} source={result.food.source} />
           <IngredientInfographic ingredients={result.food.ingredients} />
           {!result.food.unclear && (
             <p className="text-[11px] text-faint leading-relaxed mb-5">

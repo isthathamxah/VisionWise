@@ -1,13 +1,27 @@
-const IMPACT_STYLES = {
-  Low:      { text: 'text-good',    bar: 'rgb(var(--good))',    chip: 'bg-good/10 border-good/25' },
-  Moderate: { text: 'text-neutral', bar: 'rgb(var(--neutral))', chip: 'bg-neutral/10 border-neutral/25' },
-  High:     { text: 'text-bad',     bar: 'rgb(var(--bad))',     chip: 'bg-bad/10 border-bad/25' },
+// Color reflects whether more of this nutrient is something to watch (limit) or welcome
+// (beneficial) — not just how much is present. A "Moderate" amount of fiber and a "Moderate"
+// amount of sugar mean opposite things, so they shouldn't share a color.
+function nutrientStyle(direction, impact) {
+  if (direction === 'beneficial') {
+    return impact === 'Low'
+      ? { text: 'text-muted', bar: 'rgb(var(--faint))', chip: 'bg-surface border-border' }
+      : { text: 'text-good', bar: 'rgb(var(--good))', chip: 'bg-good/10 border-good/25' }
+  }
+  if (direction === 'limit') {
+    if (impact === 'High') return { text: 'text-bad', bar: 'rgb(var(--bad))', chip: 'bg-bad/10 border-bad/25' }
+    if (impact === 'Moderate') return { text: 'text-neutral', bar: 'rgb(var(--neutral))', chip: 'bg-neutral/10 border-neutral/25' }
+    if (impact === 'Low') return { text: 'text-good', bar: 'rgb(var(--good))', chip: 'bg-good/10 border-good/25' }
+  }
+  return { text: 'text-muted', bar: 'rgb(var(--faint))', chip: 'bg-surface border-border' }
 }
 
-export default function NutritionPanel({ nutrients, servingNote, unclear }) {
+export default function NutritionPanel({ nutrients, servingNote, unclear, source }) {
+  const estimated = source === 'estimated'
+  const borderStyle = estimated ? 'border-dashed' : ''
+
   if (unclear) {
     return (
-      <div className="rounded-xl2 p-4 mb-5 bg-surface2 border border-border">
+      <div className={`rounded-xl2 p-4 mb-5 bg-surface2 border border-border ${borderStyle}`}>
         <p className="text-sm text-muted text-center py-2">
           Couldn't reliably read nutrition from this photo — try a clearer or closer shot.
         </p>
@@ -18,12 +32,12 @@ export default function NutritionPanel({ nutrients, servingNote, unclear }) {
   if (!nutrients?.length) return null
 
   return (
-    <div className="rounded-xl2 p-4 mb-5 bg-surface2 border border-border">
+    <div className={`rounded-xl2 p-4 mb-5 bg-surface2 border border-border ${borderStyle}`}>
       <p className="eyebrow mb-1">Nutrition</p>
-      {servingNote && <p className="text-xs text-faint mb-4">{servingNote}</p>}
+      {servingNote && <p className="text-xs text-faint mb-4">{estimated && '~ '}{servingNote}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {nutrients.map((n, i) => {
-          const style = IMPACT_STYLES[n.impact] || { text: 'text-muted', bar: 'rgb(var(--faint))', chip: 'bg-surface border-border' }
+          const style = nutrientStyle(n.direction, n.impact)
           const fillPct = Math.min(n.percentDV, 100)
           return (
             <div key={i} className="rounded-xl p-3 bg-surface border border-border">
@@ -36,6 +50,7 @@ export default function NutritionPanel({ nutrients, servingNote, unclear }) {
                 )}
               </div>
               <p className="font-display font-bold text-lg text-text mb-1.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {estimated && <span className="text-faint font-normal mr-0.5">~</span>}
                 {n.amount}<span className="text-xs font-normal text-faint ml-1">{n.unit}</span>
               </p>
               <div className="flex items-center gap-2">
