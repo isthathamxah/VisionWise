@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Layers, Target } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Layers, Target, X } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import InfographicChart from '../components/InfographicChart/InfographicChart'
+import VerdictCard from '../components/VerdictCard/VerdictCard'
 import api from '../services/api'
 
 const verdictText = { Good: 'text-good', Bad: 'text-bad', Neutral: 'text-neutral' }
@@ -29,6 +30,14 @@ export default function History() {
   const [pages, setPages] = useState(1)
   const [filter, setFilter] = useState('')
   const [loading, setLoading] = useState(true)
+  const [selectedScan, setSelectedScan] = useState(null)
+
+  useEffect(() => {
+    if (!selectedScan) return
+    const onKey = e => { if (e.key === 'Escape') setSelectedScan(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedScan])
 
   const fetchData = async () => {
     setLoading(true)
@@ -129,7 +138,10 @@ export default function History() {
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">
           {scans.map(s => (
-            <div key={s._id} className="card p-4 flex items-center gap-3">
+            <div key={s._id} role="button" tabIndex={0}
+              onClick={() => setSelectedScan(s)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelectedScan(s) }}
+              className="card p-4 flex items-center gap-3 cursor-pointer hover:border-brand transition-colors">
               <span className={`w-2 h-2 rounded-full shrink-0 ${verdictDot[s.verdict]}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-text font-medium capitalize truncate">{s.objectLabel}</p>
@@ -141,7 +153,7 @@ export default function History() {
                 <p className={`font-display font-bold ${verdictText[s.verdict]}`}>{s.score}</p>
                 <p className={`font-mono text-[10px] ${verdictText[s.verdict]}`}>{s.verdict}</p>
               </div>
-              <button onClick={() => handleDelete(s._id)}
+              <button onClick={e => { e.stopPropagation(); handleDelete(s._id) }}
                 className="text-faint hover:text-bad transition-colors cursor-pointer p-1 shrink-0" aria-label="Delete scan">
                 <Trash2 size={15} />
               </button>
@@ -162,6 +174,19 @@ export default function History() {
             className="flex items-center justify-center w-10 h-10 rounded-full card cursor-pointer disabled:opacity-30 hover:border-brand transition-colors" aria-label="Next page">
             <ChevronRight size={16} className="text-muted" />
           </button>
+        </div>
+      )}
+
+      {selectedScan && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 py-10 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSelectedScan(null)}>
+          <div className="w-full max-w-md relative" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setSelectedScan(null)} aria-label="Close"
+              className="absolute -top-3 -right-3 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-text cursor-pointer shadow-pop">
+              <X size={16} />
+            </button>
+            <VerdictCard result={selectedScan} onScanAgain={() => setSelectedScan(null)} />
+          </div>
         </div>
       )}
     </div>
