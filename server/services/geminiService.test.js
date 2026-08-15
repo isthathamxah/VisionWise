@@ -77,6 +77,27 @@ test('sanitizeFood survives empty nutrients/ingredients on a clear food scan', (
   assert.deepEqual(result.ingredients, [])
 })
 
+test('sanitizeFood keeps a valid nutrient direction and defaults an invalid one to neutral', () => {
+  const result = sanitizeFood({
+    isFood: true,
+    unclear: false,
+    nutrients: [
+      { label: 'Sugar', amount: 19, direction: 'limit' },
+      { label: 'Fiber', amount: 4, direction: 'beneficial' },
+      { label: 'Iron', amount: 2, direction: 'made up value' }
+    ],
+    ingredients: []
+  })
+  assert.equal(result.nutrients[0].direction, 'limit')
+  assert.equal(result.nutrients[1].direction, 'beneficial')
+  assert.equal(result.nutrients[2].direction, 'neutral')
+})
+
+test('sanitizeFood defaults a missing nutrient direction to neutral', () => {
+  const result = sanitizeFood({ isFood: true, unclear: false, nutrients: [{ label: 'Calories', amount: 95 }], ingredients: [] })
+  assert.equal(result.nutrients[0].direction, 'neutral')
+})
+
 test('sanitizeFood caps nutrients at 12 and ingredients at 8', () => {
   const manyNutrients = Array.from({ length: 20 }, (_, i) => ({ label: `N${i}`, amount: 1 }))
   const manyIngredients = Array.from({ length: 20 }, (_, i) => ({ name: `I${i}` }))

@@ -86,6 +86,7 @@ export function sanitizeFood(food) {
           unit: typeof n.unit === 'string' ? n.unit.slice(0, 10) : '',
           percentDV: Number.isFinite(n.percentDV) ? Math.max(0, Math.min(400, Math.round(n.percentDV))) : 0,
           impact: ['Low', 'Moderate', 'High'].includes(n.impact) ? n.impact : null,
+          direction: ['limit', 'beneficial', 'neutral'].includes(n.direction) ? n.direction : 'neutral',
           note: typeof n.note === 'string' ? n.note.slice(0, 200) : ''
         }))
     : []
@@ -107,13 +108,34 @@ export function sanitizeFood(food) {
 }
 
 export async function getVerdict(objectLabel, context, imageBase64) {
+  const isHealth = context === 'health'
+
+  const breakdownInstruction = isHealth
+    ? `Break the object down into 3-5 key components or factors that drove your verdict, with a percent weight each summing to 100 — UNLESS the object is food, in which case return an empty breakdown array (the nutrition data below covers that role instead).`
+    : `Also break the object down into 3-5 key components or factors that drove your verdict (e.g. materials or usage factors) with a percent weight each, summing to 100.`
+
+  // Food analysis only makes sense under the health context — asking for it under eco/focus/money
+  // would just be wasted output the app throws away (sanitizeFood forces it to undefined there anyway).
+  const foodInstruction = isHealth ? `
+
+If the scanned object is food (a dish or a packaged food/drink product), additionally analyze it and include a "food" object in your JSON response. Use dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise use dishType "dish" and source "estimated". Never invent numbers: if the object is food but the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. If the object is not food, omit the "food" field entirely. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Also set each nutrient's "direction" to "limit" (something people should generally moderate in large amounts, e.g. sugar, sodium, saturated fat), "beneficial" (generally good in reasonable amounts, e.g. fiber, protein, vitamins), or "neutral" (neither clearly applies) — this drives how it's color-coded, separately from how much of it is present. Keep each ingredient explanation to one short sentence.` : ''
+
+  const foodJsonField = isHealth ? `,
+  "food": {
+    "isFood": <true or false>,
+    "dishType": "dish" or "packaged",
+    "source": "estimated" or "label",
+    "servingNote": "<e.g. 'Estimated for 1 plate/serving'>",
+    "unclear": <true or false>,
+    "nutrients": [{"label": "Calories", "amount": <number>, "unit": "kcal", "percentDV": <integer>, "impact": "Low" or "Moderate" or "High", "direction": "limit" or "beneficial" or "neutral", "note": "<one sentence>"}],
+    "ingredients": [{"name": "<ingredient>", "whatItIs": "<one sentence>", "whyUsed": "<one sentence>", "effect": "<one sentence>", "concern": "Low" or "Moderate" or "High" or null}]
+  }` : ''
+
   const prompt = `You are a contextual object evaluator for the VisionWise app.
 The user scanned a "${objectLabel}" and wants to evaluate it in the "${context}" context.
 Your job: ${contextDescriptions[context]}.
 
-Also break the object down into 3-5 key components or factors that drove your verdict (e.g. for food: ingredients/nutrients; for a device: materials or usage factors) with a percent weight each, summing to 100.
-
-If the scanned object is food (a dish or a packaged food/drink product), additionally analyze it and include a "food" object in your JSON response. Use dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise use dishType "dish" and source "estimated". Never invent numbers: if the object is food but the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. If the object is not food, omit the "food" field entirely. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Keep each ingredient explanation to one short sentence.
+${breakdownInstruction}${foodInstruction}
 
 Respond with ONLY valid JSON (no markdown, no extra text):
 {
@@ -121,16 +143,7 @@ Respond with ONLY valid JSON (no markdown, no extra text):
   "score": <integer between 0 and 100>,
   "reason": "<one clear sentence explanation>",
   "tips": ["<actionable tip 1>", "<actionable tip 2>", "<actionable tip 3>"],
-  "breakdown": [{"label": "<component or factor>", "percent": <integer, sums to 100 across items>}],
-  "food": {
-    "isFood": <true or false>,
-    "dishType": "dish" or "packaged",
-    "source": "estimated" or "label",
-    "servingNote": "<e.g. 'Estimated for 1 plate/serving'>",
-    "unclear": <true or false>,
-    "nutrients": [{"label": "Calories", "amount": <number>, "unit": "kcal", "percentDV": <integer>, "impact": "Low" or "Moderate" or "High", "note": "<one sentence>"}],
-    "ingredients": [{"name": "<ingredient>", "whatItIs": "<one sentence>", "whyUsed": "<one sentence>", "effect": "<one sentence>", "concern": "Low" or "Moderate" or "High" or null}]
-  }
+  "breakdown": [{"label": "<component or factor>", "percent": <integer, sums to 100 across items>}]${foodJsonField}
 }
 
 Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
