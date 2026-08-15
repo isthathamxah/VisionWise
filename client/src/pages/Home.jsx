@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowRight, HeartPulse, Leaf, BriefcaseBusiness, Coins,
-  Apple, Coffee, Laptop, Smartphone, Wine, BookOpen, ShoppingBag, Cpu,
-  ScanLine, Zap, ShieldCheck, Sparkles,
+  ArrowRight, Leaf, Utensils, ScanBarcode,
+  Apple, Coffee, Laptop, Wine, BookOpen, ShoppingBag, Cpu,
+  ScanLine, ShieldCheck, Sparkles,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, ResponsiveContainer, Cell,
@@ -21,17 +21,17 @@ const SCAN_ITEMS = [
   { icon: ShoppingBag, label: 'Products' }, { icon: Cpu, label: 'Electronics' },
 ]
 
-const LENSES = [
-  { icon: HeartPulse, name: 'Health', tone: 'good',    line: 'Sugar, calories and additives in what you eat and drink.' },
-  { icon: Leaf,       name: 'Environment', tone: 'good', line: 'How recyclable or wasteful an object really is.' },
-  { icon: BriefcaseBusiness, name: 'Productivity', tone: 'neutral', line: 'What in your space helps you focus — and what doesn\'t.' },
-  { icon: Coins,      name: 'Finance', tone: 'neutral', line: 'Whether a thing is genuinely worth what it costs.' },
+const CAPABILITIES = [
+  { icon: Utensils,    name: 'Nutrition estimate',  tone: 'good',    line: 'Calories, fiber, sugar and more — estimated straight from a photo of your plate.' },
+  { icon: ScanBarcode, name: 'Label reading',        tone: 'good',    line: 'Point it at packaging and it reads the real ingredients and nutrition facts.' },
+  { icon: Sparkles,    name: 'Ingredient breakdown', tone: 'neutral', line: 'What each ingredient is, why it\'s there, and what it does in your body.' },
+  { icon: ShieldCheck, name: 'Honest framing',       tone: 'neutral', line: 'Low, moderate or high impact — never a blanket healthy or unhealthy label.' },
 ]
 
 const STEPS = [
-  { icon: ScanLine, k: '01', title: 'Choose a lens', line: 'Pick Health, Environment, Focus or Money — the angle you care about.' },
-  { icon: Zap,      k: '02', title: 'Point your camera', line: 'The model detects the object live, right in your browser. Nothing uploaded.' },
-  { icon: ShieldCheck, k: '03', title: 'Get the verdict', line: 'An instant score from 0–100, a plain-English reason, and one useful tip.' },
+  { icon: ScanLine, k: '01', title: 'Point your camera', line: 'The model detects the object live, right in your browser. Nothing uploaded.' },
+  { icon: Sparkles, k: '02', title: 'Get real nutrition data', line: 'Ingredients, nutrients and impact — estimated from a dish, or read straight off a package label.' },
+  { icon: ShieldCheck, k: '03', title: 'See an honest verdict', line: 'A score from 0–100, a plain-English reason, and one useful tip.' },
 ]
 
 const TREND = [
@@ -68,16 +68,16 @@ export default function Home() {
             {/* Copy */}
             <div className="animate-reveal">
               <span className="chip mb-6">
-                <Sparkles size={12} className="text-brand" /> AI-powered contextual scanner
+                <Sparkles size={12} className="text-brand" /> AI-powered nutrition scanner
               </span>
               <h1 className="font-display font-extrabold tracking-tight text-text leading-[1.05] text-balance"
                 style={{ fontSize: 'clamp(2.5rem, 6vw, 4rem)' }}>
                 Point your camera.<br />
-                Get a <span className="text-brand">straight answer.</span>
+                Know what&apos;s <span className="text-brand">really in it.</span>
               </h1>
               <p className="text-muted text-lg leading-relaxed mt-6 max-w-lg">
-                VisionWise reads any object through the lens you choose — health, environment,
-                focus or money — and tells you plainly whether it&apos;s good, neutral or bad for you.
+                VisionWise reads your food — real nutrition data, honest ingredient breakdowns,
+                no guessing — and tells you plainly whether it&apos;s good, neutral or bad for you.
               </p>
               <div className="flex flex-wrap gap-3 mt-8">
                 <Link to={isAuthenticated ? '/scanner' : '/register'} className="btn-brand">
@@ -86,7 +86,7 @@ export default function Home() {
                 <a href="#how" className="btn-outline">See how it works</a>
               </div>
               <div className="flex items-center gap-6 mt-10">
-                {[['80+', 'object types'], ['4', 'lenses'], ['0–100', 'verdict score']].map(([n, l]) => (
+                {[['80+', 'object types'], ['7+', 'nutrients tracked'], ['0–100', 'verdict score']].map(([n, l]) => (
                   <div key={l}>
                     <p className="font-display font-extrabold text-2xl text-text">{n}</p>
                     <p className="font-mono text-[11px] text-faint uppercase tracking-wider mt-0.5">{l}</p>
@@ -152,25 +152,25 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══ LENSES ═══ */}
-      <section id="lenses" className="bg-surface2/40 border-y border-border">
+      {/* ═══ CAPABILITIES ═══ */}
+      <section id="detail" className="bg-surface2/40 border-y border-border">
         <div className="container-vw py-20 md:py-28">
           <div className="grid lg:grid-cols-2 gap-14 items-start">
             <div className="lg:sticky lg:top-24 reveal-on-scroll">
-              <span className="eyebrow">Four lenses</span>
+              <span className="eyebrow">What you get</span>
               <h2 className="font-display font-extrabold text-text mt-3 leading-tight" style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>
-                One object. Four ways to judge it.
+                Not just a score. The real picture.
               </h2>
               <p className="text-muted text-lg leading-relaxed mt-5 max-w-md">
-                The same coffee cup is a different story to your body, the planet, your focus
-                and your wallet. Choose the lens that matters right now.
+                Point it at your food and get more than good or bad — real numbers, real
+                ingredients, explained plainly.
               </p>
               <Link to={isAuthenticated ? '/scanner' : '/register'} className="btn-brand mt-8">
                 Try it now <ArrowRight size={16} />
               </Link>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              {LENSES.map((l, i) => {
+              {CAPABILITIES.map((l, i) => {
                 const Icon = l.icon
                 return (
                   <div key={l.name} className="card p-6 reveal-on-scroll hover:-translate-y-1 transition-transform" style={{ transitionDelay: `${i * 70}ms` }}>
@@ -197,10 +197,10 @@ export default function Home() {
             </h2>
             <p className="text-muted text-lg leading-relaxed mt-5 max-w-md">
               VisionWise remembers what you scan and turns it into trends — so you can see your
-              habits shift over time, lens by lens.
+              habits shift over time.
             </p>
             <ul className="mt-7 flex flex-col gap-3">
-              {['Weekly activity and average score', 'Verdict breakdown across all scans', 'Filter history by any lens'].map(t => (
+              {['Weekly activity and average score', 'Verdict breakdown across all scans', 'Full nutrition detail on every past scan'].map(t => (
                 <li key={t} className="flex items-center gap-3 text-sm text-text">
                   <span className="flex items-center justify-center w-5 h-5 rounded-full bg-brandSoft text-brand shrink-0">
                     <ShieldCheck size={12} />

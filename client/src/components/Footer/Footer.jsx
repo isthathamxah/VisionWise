@@ -1,17 +1,12 @@
 import { Link } from 'react-router-dom'
-import { Scan, Mail, ChevronUp, HeartPulse, Leaf, BriefcaseBusiness, Coins } from 'lucide-react'
+import { Scan, Mail, ChevronUp } from 'lucide-react'
 
 const COLS = [
   { title: 'Product', links: [
     { label: 'Scanner', to: '/scanner' },
     { label: 'Dashboard', to: '/history' },
     { label: 'How it works', to: '/#how' },
-  ]},
-  { title: 'Lenses', links: [
-    { label: 'Health', to: '/#lenses' },
-    { label: 'Environment', to: '/#lenses' },
-    { label: 'Productivity', to: '/#lenses' },
-    { label: 'Finance', to: '/#lenses' },
+    { label: 'What you get', to: '/#detail' },
   ]},
   { title: 'Account', links: [
     { label: 'Sign in', to: '/login' },
@@ -34,7 +29,7 @@ export default function Footer() {
       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-48 brand-glow blur-3xl opacity-40 pointer-events-none" />
 
       <div className="container-vw relative pt-16 pb-10">
-        <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr]">
 
           {/* Brand */}
           <div>
@@ -44,21 +39,9 @@ export default function Footer() {
               </span>
               <span className="font-display font-extrabold text-lg text-text">VisionWise</span>
             </Link>
-            <p className="text-sm text-muted leading-relaxed max-w-xs mb-5">
-              Point your camera at anything and get an honest verdict — through the lens you choose.
+            <p className="text-sm text-muted leading-relaxed max-w-xs">
+              Point your camera at your food and get the real nutrition story — no guessing.
             </p>
-            <div className="flex items-center gap-2.5">
-              {[
-                { icon: HeartPulse, tone: 'text-good' },
-                { icon: Leaf, tone: 'text-brand' },
-                { icon: BriefcaseBusiness, tone: 'text-neutral' },
-                { icon: Coins, tone: 'text-bad' },
-              ].map(({ icon: Icon, tone }, i) => (
-                <span key={i} className={`flex items-center justify-center w-9 h-9 rounded-lg bg-surface border border-border ${tone}`}>
-                  <Icon size={16} strokeWidth={2} />
-                </span>
-              ))}
-            </div>
           </div>
 
           {/* Link columns */}

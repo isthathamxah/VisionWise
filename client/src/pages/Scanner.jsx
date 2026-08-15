@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FlipHorizontal2, Zap, ScanLine, Upload, RotateCcw, Aperture, Check } from 'lucide-react'
 import Camera from '../components/Camera/Camera'
-import ContextSelector from '../components/ContextSelector/ContextSelector'
 import VerdictCard from '../components/VerdictCard/VerdictCard'
 import { useCamera } from '../hooks/useCamera'
 import { useDetection } from '../hooks/useDetection'
@@ -19,7 +18,6 @@ function Corner({ pos }) {
 }
 
 export default function Scanner() {
-  const [context, setContext] = useState('health')
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState(null)
   const [scanError, setScanError] = useState('')
@@ -105,7 +103,7 @@ export default function Scanner() {
     if (navigator.vibrate) navigator.vibrate(35)
     try {
       const imageBase64 = captureFrame(uploadedSrc ? uploadImgRef.current : videoRef.current)
-      const { data } = await api.post('/scan', { imageBase64, objectLabel: detectedObject, context })
+      const { data } = await api.post('/scan', { imageBase64, objectLabel: detectedObject })
       setScanResult(data)
       if (navigator.vibrate) navigator.vibrate(data.verdict === 'Good' ? [25, 20, 25] : 55)
     } catch (err) {
@@ -129,8 +127,6 @@ export default function Scanner() {
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-start">
           {/* Left: camera / upload */}
           <div className="flex flex-col gap-5">
-            <ContextSelector selected={context} onSelect={c => { setContext(c); setScanResult(null) }} />
-
             <div className="relative overflow-hidden rounded-xl2 border border-border bg-black" style={{ aspectRatio: '4/3' }}>
               {uploadedSrc ? (
                 <img

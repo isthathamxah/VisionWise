@@ -43,7 +43,7 @@ export default function Navbar() {
 
   const links = isAuthenticated
     ? [{ to: '/scanner', label: 'Scanner' }, { to: '/history', label: 'Dashboard' }]
-    : [{ to: '/#how', label: 'How it works' }, { to: '/#lenses', label: 'Lenses' }, { to: '/#scan', label: 'What you can scan' }]
+    : [{ to: '/#how', label: 'How it works' }, { to: '/#detail', label: 'What you get' }, { to: '/#scan', label: 'What you can scan' }]
 
   const handleLogout = () => { logout(); navigate('/') }
 

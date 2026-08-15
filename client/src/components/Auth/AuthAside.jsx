@@ -1,10 +1,10 @@
-import { HeartPulse, Leaf, BriefcaseBusiness, Coins } from 'lucide-react'
+import { Utensils, ScanBarcode, Sparkles, ShieldCheck } from 'lucide-react'
 
 const POINTS = [
-  { icon: HeartPulse, tone: 'text-good', text: 'Know what\'s really in your food and drink' },
-  { icon: Leaf, tone: 'text-good', text: 'Check the environmental cost of anything' },
-  { icon: BriefcaseBusiness, tone: 'text-neutral', text: 'Spot what\'s breaking your focus' },
-  { icon: Coins, tone: 'text-neutral', text: 'Decide if it\'s worth the money' },
+  { icon: Utensils, tone: 'text-good', text: 'Estimate nutrition straight from a photo of your plate' },
+  { icon: ScanBarcode, tone: 'text-good', text: 'Read real ingredients and facts off packaging' },
+  { icon: Sparkles, tone: 'text-neutral', text: 'Understand what each ingredient actually does' },
+  { icon: ShieldCheck, tone: 'text-neutral', text: 'Get an honest impact reading, not a blanket label' },
 ]
 
 export default function AuthAside() {
@@ -16,7 +16,7 @@ export default function AuthAside() {
         <div className="relative">
           <span className="eyebrow">Why VisionWise</span>
           <h2 className="font-display font-extrabold text-3xl text-text mt-3 mb-8 leading-tight max-w-sm">
-            One camera. Four ways to understand the world around you.
+            Point your camera. Know what&apos;s really in it.
           </h2>
           <ul className="flex flex-col gap-5">
             {POINTS.map(({ icon: Icon, tone, text }) => (

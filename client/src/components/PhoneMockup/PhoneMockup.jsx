@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Apple, Coffee, Laptop, Leaf } from 'lucide-react'
+import { Apple, Coffee, Sandwich, Cookie } from 'lucide-react'
 
 // Cycles through sample detections to show the product in motion.
 const SCENES = [
-  { obj: 'Apple',        icon: Apple,  context: 'HEALTH', verdict: 'Good',    score: 92, tone: 'good',    conf: 96 },
-  { obj: 'Coffee cup',   icon: Coffee, context: 'ECO',    verdict: 'Neutral', score: 54, tone: 'neutral', conf: 89 },
-  { obj: 'Laptop',       icon: Laptop, context: 'FOCUS',  verdict: 'Good',    score: 81, tone: 'good',    conf: 93 },
-  { obj: 'Plastic bottle',icon: Leaf,  context: 'ECO',    verdict: 'Bad',     score: 24, tone: 'bad',     conf: 91 },
+  { obj: 'Apple',       icon: Apple,    tag: 'ESTIMATED',  verdict: 'Good',    score: 92, tone: 'good',    conf: 96 },
+  { obj: 'Iced coffee', icon: Coffee,   tag: 'ESTIMATED',  verdict: 'Neutral', score: 54, tone: 'neutral', conf: 89 },
+  { obj: 'Sandwich',    icon: Sandwich, tag: 'ESTIMATED',  verdict: 'Good',    score: 81, tone: 'good',    conf: 93 },
+  { obj: 'Snack bar',   icon: Cookie,   tag: 'LABEL READ', verdict: 'Bad',     score: 24, tone: 'bad',     conf: 91 },
 ]
 
 const toneColor = {
@@ -74,7 +74,7 @@ export default function PhoneMockup() {
             <div key={`v${i}`} className="rounded-xl2 p-3 bg-surface/95 border border-border backdrop-blur animate-reveal"
               style={{ boxShadow: '0 8px 30px rgb(var(--shadow) / 0.18)' }}>
               <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-[9px] tracking-widest" style={{ color }}>{s.context}</span>
+                <span className="font-mono text-[9px] tracking-widest" style={{ color }}>{s.tag}</span>
                 <span className="font-mono text-[9px] text-faint">{s.score}/100</span>
               </div>
               <div className="flex items-center justify-between">
