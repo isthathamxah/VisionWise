@@ -51,7 +51,8 @@ const scanLogSchema = new mongoose.Schema({
       nutrients: [{ label: String, amount: Number, unit: String, percentDV: Number, impact: String, note: String, _id: false }],
       ingredients: [{ name: String, whatItIs: String, whyUsed: String, effect: String, concern: String, _id: false }]
     },
-    default: undefined
+    default: undefined,
+    _id: false
   }
 }, { timestamps: true })
 
