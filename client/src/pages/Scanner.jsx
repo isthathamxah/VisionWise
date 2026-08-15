@@ -5,6 +5,7 @@ import VerdictCard from '../components/VerdictCard/VerdictCard'
 import { useCamera } from '../hooks/useCamera'
 import { useDetection } from '../hooks/useDetection'
 import { captureFrame } from '../utils/canvasOverlay'
+import { useToast } from '../context/ToastContext'
 import api from '../services/api'
 
 function Corner({ pos }) {
@@ -18,9 +19,9 @@ function Corner({ pos }) {
 }
 
 export default function Scanner() {
+  const showToast = useToast()
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState(null)
-  const [scanError, setScanError] = useState('')
 
   const { videoRef, isReady, error: camError, startCamera, stopCamera, flipCamera } = useCamera()
   const { predictions, isModelLoaded, detectedObject: liveObject, confidence: liveConfidence, detectImage } = useDetection(videoRef, isReady)
@@ -48,7 +49,7 @@ export default function Scanner() {
     e.target.value = '' // allow re-selecting the same file later
     if (!file) return
     uploadTokenRef.current += 1
-    setScanResult(null); setScanError(''); setUploadPrediction(null); setIsDetectingUpload(true); setCapturedPreview(null)
+    setScanResult(null); setUploadPrediction(null); setIsDetectingUpload(true); setCapturedPreview(null)
     stopCamera() // release the camera while a static photo is shown
     const reader = new FileReader()
     reader.onload = () => setUploadedSrc(reader.result)
@@ -57,7 +58,7 @@ export default function Scanner() {
 
   const handleCapture = () => {
     if (!videoRef.current) return
-    setScanResult(null); setScanError('') // matches every other mode transition — don't leave a stale verdict showing
+    setScanResult(null) // matches every other mode transition — don't leave a stale verdict showing
     setCapturedPreview(captureFrame(videoRef.current))
   }
 
@@ -66,7 +67,7 @@ export default function Scanner() {
   const confirmCapture = () => {
     if (!capturedPreview) return
     uploadTokenRef.current += 1
-    setScanResult(null); setScanError(''); setUploadPrediction(null); setIsDetectingUpload(true)
+    setScanResult(null); setUploadPrediction(null); setIsDetectingUpload(true)
     stopCamera() // same handoff as a file upload — this is now a static image to scan
     setUploadedSrc(capturedPreview)
     setCapturedPreview(null)
@@ -87,19 +88,19 @@ export default function Scanner() {
   const handleUploadImgError = () => {
     uploadTokenRef.current += 1
     setUploadedSrc(null); setUploadPrediction(null); setIsDetectingUpload(false)
-    setScanError('Could not load that image. Try a different file.')
+    showToast('Could not load that image. Try a different file.', 'error')
     startCamera()
   }
 
   const useCameraInstead = () => {
     uploadTokenRef.current += 1
-    setUploadedSrc(null); setUploadPrediction(null); setScanResult(null); setScanError(''); setIsDetectingUpload(false); setCapturedPreview(null)
+    setUploadedSrc(null); setUploadPrediction(null); setScanResult(null); setIsDetectingUpload(false); setCapturedPreview(null)
     startCamera()
   }
 
   const handleScan = async () => {
     if (!detectedObject || isScanning) return
-    setScanError(''); setIsScanning(true); setScanResult(null)
+    setIsScanning(true); setScanResult(null)
     if (navigator.vibrate) navigator.vibrate(35)
     try {
       const imageBase64 = captureFrame(uploadedSrc ? uploadImgRef.current : videoRef.current)
@@ -107,7 +108,7 @@ export default function Scanner() {
       setScanResult(data)
       if (navigator.vibrate) navigator.vibrate(data.verdict === 'Good' ? [25, 20, 25] : 55)
     } catch (err) {
-      setScanError(err.response?.data?.error || 'Scan failed. Try again.')
+      showToast(err.response?.data?.error || 'Scan failed. Try again.', 'error')
     } finally { setIsScanning(false) }
   }
 
@@ -241,11 +242,6 @@ export default function Scanner() {
 
           {/* Right: verdict / placeholder */}
           <div className="lg:sticky lg:top-24">
-            {scanError && (
-              <div className="rounded-xl2 px-4 py-3 mb-4 bg-bad/10 border border-bad/25">
-                <p className="text-bad text-sm">{scanError}</p>
-              </div>
-            )}
             {scanResult ? (
               <VerdictCard result={scanResult} onScanAgain={() => setScanResult(null)} />
             ) : (
