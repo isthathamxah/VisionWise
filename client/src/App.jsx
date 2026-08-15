@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar/Navbar'
 import Footer from './components/Footer/Footer'
+import BottomNav from './components/BottomNav/BottomNav'
+import { ToastProvider } from './context/ToastContext'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -47,11 +49,13 @@ function OAuthCallback() {
 }
 
 function Shell({ children, footer = true }) {
+  const { isAuthenticated } = useAuth()
   return (
     <div className="min-h-dvh bg-bg flex flex-col">
       <Navbar />
-      <main className="flex-1 pt-16">{children}</main>
+      <main className={`flex-1 pt-16 ${isAuthenticated ? 'pb-20 md:pb-0' : ''}`}>{children}</main>
       {footer && <Footer />}
+      {isAuthenticated && <BottomNav />}
     </div>
   )
 }
@@ -86,9 +90,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   )

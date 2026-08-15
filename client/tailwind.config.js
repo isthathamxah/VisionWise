@@ -43,6 +43,8 @@ export default {
         'marquee':   'marquee 26s linear infinite',
         'pulse-dot': 'pulseDot 2s ease-in-out infinite',
         'ring':      'ring 2.4s ease-out infinite',
+        'slide-up':  'slideUp 0.32s cubic-bezier(0.22,1,0.36,1) forwards',
+        'toast-in':  'toastIn 0.3s cubic-bezier(0.22,1,0.36,1) forwards',
       },
       keyframes: {
         reveal: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
@@ -51,6 +53,8 @@ export default {
         marquee:{ '0%': { transform: 'translateX(0)' }, '100%': { transform: 'translateX(-50%)' } },
         pulseDot:{ '0%,100%': { opacity: '1' }, '50%': { opacity: '0.4' } },
         ring:   { '0%': { transform: 'scale(0.8)', opacity: '0.7' }, '100%': { transform: 'scale(1.8)', opacity: '0' } },
+        slideUp:{ '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
+        toastIn:{ '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
       },
     },
   },
