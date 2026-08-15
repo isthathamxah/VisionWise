@@ -50,10 +50,12 @@ function OAuthCallback() {
 
 function Shell({ children, footer = true }) {
   const { isAuthenticated } = useAuth()
+  const { pathname } = useLocation()
   return (
     <div className="min-h-dvh bg-bg flex flex-col">
       <Navbar />
-      <main className={`flex-1 pt-16 ${isAuthenticated ? 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>{children}</main>
+      {/* key={pathname} forces a remount on navigation so animate-page-in replays each time */}
+      <main key={pathname} className={`flex-1 pt-16 animate-page-in ${isAuthenticated ? 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>{children}</main>
       {footer && <Footer />}
       {isAuthenticated && <BottomNav />}
     </div>

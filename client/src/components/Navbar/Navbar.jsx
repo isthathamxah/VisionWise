@@ -89,18 +89,21 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile controls */}
-        <div className="flex md:hidden items-center gap-2">
-          <ThemeToggle />
-          <button onClick={() => setOpen(o => !o)} aria-label="Menu"
-            className="flex items-center justify-center w-10 h-10 rounded-full border border-border text-text cursor-pointer">
-            {open ? <X size={18} /> : <Menu size={18} />}
-          </button>
-        </div>
+        {/* Mobile controls — logged-in users already have BottomNav for nav, theme and sign out,
+            so the top bar stays a plain logo bar instead of duplicating that chrome. */}
+        {!isAuthenticated && (
+          <div className="flex md:hidden items-center gap-2">
+            <ThemeToggle />
+            <button onClick={() => setOpen(o => !o)} aria-label="Menu"
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-border text-text cursor-pointer">
+              {open ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Mobile menu */}
-      {open && (
+      {!isAuthenticated && open && (
         <div className="md:hidden bg-bg border-b border-border container-vw pb-5 pt-1 animate-reveal">
           <nav className="flex flex-col gap-1 mb-4">
             {links.map(l => isHashLink(l.to) ? (

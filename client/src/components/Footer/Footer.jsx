@@ -25,11 +25,11 @@ export default function Footer() {
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 
   return (
-    <footer className="relative mt-20 border-t border-border bg-surface2/50 overflow-hidden">
+    <footer className="relative mt-14 md:mt-20 border-t border-border bg-surface2/50 overflow-hidden">
       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-48 brand-glow blur-3xl opacity-40 pointer-events-none" />
 
-      <div className="container-vw relative pt-16 pb-10">
-        <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="container-vw relative pt-12 pb-8 md:pt-16 md:pb-10">
+        <div className="grid gap-10 md:gap-12 lg:grid-cols-[1.4fr_1fr_1fr]">
 
           {/* Brand */}
           <div>
@@ -54,18 +54,18 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-14 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-10 pt-6 md:mt-14 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="font-mono text-xs text-faint order-2 sm:order-1">
             © {new Date().getFullYear()} VisionWise — Final Year Project
           </p>
           <div className="flex items-center gap-3 order-1 sm:order-2">
             <span className="chip text-faint">Built with React · TensorFlow.js · Gemini</span>
             <a href="mailto:hello@visionwise.app"
-              className="flex items-center justify-center w-9 h-9 rounded-full border border-border text-muted hover:text-brand hover:border-brand transition-colors" aria-label="Email">
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-border text-muted hover:text-brand hover:border-brand transition-colors" aria-label="Email">
               <Mail size={16} />
             </a>
             <button onClick={scrollTop}
-              className="flex items-center justify-center w-9 h-9 rounded-full border border-border text-muted hover:text-brand hover:border-brand transition-colors cursor-pointer" aria-label="Back to top">
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-border text-muted hover:text-brand hover:border-brand transition-colors cursor-pointer" aria-label="Back to top">
               <ChevronUp size={16} />
             </button>
           </div>

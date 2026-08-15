@@ -62,7 +62,7 @@ export default function Home() {
       {/* ═══ HERO ═══ */}
       <section className="relative overflow-hidden grid-bg">
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] brand-glow blur-3xl opacity-60 pointer-events-none" />
-        <div className="container-vw pt-14 pb-16 md:pt-24 md:pb-24">
+        <div className="container-vw pt-10 pb-12 md:pt-24 md:pb-24">
           <div className="grid lg:grid-cols-2 gap-14 items-center">
 
             {/* Copy */}
@@ -126,8 +126,8 @@ export default function Home() {
       </section>
 
       {/* ═══ HOW IT WORKS ═══ */}
-      <section id="how" className="container-vw py-20 md:py-28">
-        <div className="max-w-2xl mb-14 reveal-on-scroll">
+      <section id="how" className="container-vw py-14 md:py-28">
+        <div className="max-w-2xl mb-10 md:mb-14 reveal-on-scroll">
           <span className="eyebrow">How it works</span>
           <h2 className="font-display font-extrabold text-text mt-3 leading-tight" style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>
             From camera to verdict in three seconds.
@@ -154,7 +154,7 @@ export default function Home() {
 
       {/* ═══ CAPABILITIES ═══ */}
       <section id="detail" className="bg-surface2/40 border-y border-border">
-        <div className="container-vw py-20 md:py-28">
+        <div className="container-vw py-14 md:py-28">
           <div className="grid lg:grid-cols-2 gap-14 items-start">
             <div className="lg:sticky lg:top-24 reveal-on-scroll">
               <span className="eyebrow">What you get</span>
@@ -188,7 +188,7 @@ export default function Home() {
       </section>
 
       {/* ═══ DASHBOARD / VISUALIZATION ═══ */}
-      <section className="container-vw py-20 md:py-28">
+      <section className="container-vw py-14 md:py-28">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="reveal-on-scroll">
             <span className="eyebrow">Your dashboard</span>
@@ -263,7 +263,7 @@ export default function Home() {
 
       {/* ═══ CTA ═══ */}
       <section className="container-vw pb-8">
-        <div className="relative overflow-hidden rounded-xl2 border border-border p-10 md:p-16 text-center reveal-on-scroll"
+        <div className="relative overflow-hidden rounded-xl2 border border-border p-8 md:p-16 text-center reveal-on-scroll"
           style={{ background: 'linear-gradient(135deg, rgb(var(--brand) / 0.12), rgb(var(--surface2)))' }}>
           <div className="absolute inset-0 grid-bg opacity-50 pointer-events-none" />
           <div className="relative">

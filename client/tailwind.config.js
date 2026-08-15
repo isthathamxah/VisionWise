@@ -45,9 +45,11 @@ export default {
         'ring':      'ring 2.4s ease-out infinite',
         'slide-up':  'slideUp 0.32s cubic-bezier(0.22,1,0.36,1) forwards',
         'toast-in':  'toastIn 0.3s cubic-bezier(0.22,1,0.36,1) forwards',
+        'page-in':   'pageIn 0.26s cubic-bezier(0.22,1,0.36,1) forwards',
       },
       keyframes: {
         reveal: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        pageIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
         float:  { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-14px)' } },
         scan:   { '0%': { top: '6%', opacity: '0' }, '12%': { opacity: '1' }, '88%': { opacity: '1' }, '100%': { top: '92%', opacity: '0' } },
         marquee:{ '0%': { transform: 'translateX(0)' }, '100%': { transform: 'translateX(-50%)' } },
