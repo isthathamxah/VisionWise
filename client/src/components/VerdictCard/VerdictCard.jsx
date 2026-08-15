@@ -10,7 +10,7 @@ const cfg = {
   Neutral: { icon: AlertTriangle, text: 'text-neutral', bar: 'rgb(var(--neutral))', soft: 'bg-neutral/10 border-neutral/25' },
 }
 
-export default function VerdictCard({ result, onScanAgain }) {
+export default function VerdictCard({ result, onScanAgain, actionLabel = 'Scan again' }) {
   const [score, setScore] = useState(0)
 
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function VerdictCard({ result, onScanAgain }) {
       )}
 
       <div className="flex gap-2.5">
-        <button onClick={onScanAgain} className="btn-outline flex-1"><RefreshCw size={15} /> Scan again</button>
+        <button onClick={onScanAgain} className="btn-outline flex-1"><RefreshCw size={15} /> {actionLabel}</button>
         <button onClick={handleShare} className="btn-outline px-4" aria-label="Share verdict"><Share2 size={15} /></button>
       </div>
     </div>

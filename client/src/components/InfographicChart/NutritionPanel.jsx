@@ -3,9 +3,7 @@
 // amount of sugar mean opposite things, so they shouldn't share a color.
 function nutrientStyle(direction, impact) {
   if (direction === 'beneficial') {
-    return impact === 'Low'
-      ? { text: 'text-muted', bar: 'rgb(var(--faint))', chip: 'bg-surface border-border' }
-      : { text: 'text-good', bar: 'rgb(var(--good))', chip: 'bg-good/10 border-good/25' }
+    if (impact === 'Moderate' || impact === 'High') return { text: 'text-good', bar: 'rgb(var(--good))', chip: 'bg-good/10 border-good/25' }
   }
   if (direction === 'limit') {
     if (impact === 'High') return { text: 'text-bad', bar: 'rgb(var(--bad))', chip: 'bg-bad/10 border-bad/25' }

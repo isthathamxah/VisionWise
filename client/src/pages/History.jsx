@@ -140,7 +140,11 @@ export default function History() {
           {scans.map(s => (
             <div key={s._id} role="button" tabIndex={0}
               onClick={() => setSelectedScan(s)}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelectedScan(s) }}
+              onKeyDown={e => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault() // stop Space from also scrolling the page
+                setSelectedScan(s)
+              }}
               className="card p-4 flex items-center gap-3 cursor-pointer hover:border-brand transition-colors">
               <span className={`w-2 h-2 rounded-full shrink-0 ${verdictDot[s.verdict]}`} />
               <div className="flex-1 min-w-0">
@@ -154,6 +158,7 @@ export default function History() {
                 <p className={`font-mono text-[10px] ${verdictText[s.verdict]}`}>{s.verdict}</p>
               </div>
               <button onClick={e => { e.stopPropagation(); handleDelete(s._id) }}
+                onKeyDown={e => e.stopPropagation()}
                 className="text-faint hover:text-bad transition-colors cursor-pointer p-1 shrink-0" aria-label="Delete scan">
                 <Trash2 size={15} />
               </button>
@@ -185,7 +190,7 @@ export default function History() {
               className="absolute -top-3 -right-3 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-text cursor-pointer shadow-pop">
               <X size={16} />
             </button>
-            <VerdictCard result={selectedScan} onScanAgain={() => setSelectedScan(null)} />
+            <VerdictCard result={selectedScan} onScanAgain={() => setSelectedScan(null)} actionLabel="Close" />
           </div>
         </div>
       )}
