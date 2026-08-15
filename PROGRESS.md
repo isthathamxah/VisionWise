@@ -1,6 +1,6 @@
 # VisionWise — Project Progress Tracker
 **Student:** Muhammad Taha | **Reg:** 4618-FOC/BSCS/F22 | **IIUI**  
-**Last Updated:** June 22, 2026
+**Last Updated:** August 8, 2026
 
 ---
 
@@ -66,14 +66,14 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| useCamera hook | ⬜ | VW-009 |
-| Camera component (<video> + <canvas>) | ⬜ | VW-010 |
-| TF.js COCO-SSD model loading | ⬜ | VW-011 |
-| Real-time detection loop | ⬜ | VW-012 |
-| Bounding box canvas overlay | ⬜ | VW-013 |
-| Detection chip UI | ⬜ | VW-015 |
-| Frame capture on scan click | ⬜ | VW-018 |
-| Camera error handling | ⬜ | VW-017 |
+| useCamera hook | ✅ | VW-009 |
+| Camera component (<video> + <canvas>) | ✅ | VW-010 |
+| TF.js COCO-SSD model loading | ✅ | VW-011 |
+| Real-time detection loop | ✅ | VW-012 — requestAnimationFrame loop, confidence >0.5 filter |
+| Bounding box canvas overlay | ✅ | VW-013 |
+| Detection chip UI | ✅ | VW-015 |
+| Frame capture on scan click | ✅ | VW-018 |
+| Camera error handling | ✅ | VW-017 |
 
 ---
 
@@ -122,7 +122,7 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Push to GitHub | ⬜ | |
+| Push to GitHub | ✅ | |
 | Deploy client to Vercel | ⬜ | VW-040 |
 | Deploy server to Render | ⬜ | VW-040 |
 | Set production env vars | ⬜ | |
