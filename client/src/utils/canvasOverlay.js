@@ -32,13 +32,14 @@ export function drawOverlay(canvas, predictions, verdict = null) {
   })
 }
 
-export function captureFrame(videoEl) {
-  const w = videoEl.videoWidth || 640
-  const h = videoEl.videoHeight || 480
+// Accepts a <video> (live camera) or <img> (uploaded photo) element.
+export function captureFrame(el) {
+  const w = el.videoWidth || el.naturalWidth || 640
+  const h = el.videoHeight || el.naturalHeight || 480
   const canvas = document.createElement('canvas')
   canvas.width = w
   canvas.height = h
   const ctx = canvas.getContext('2d')
-  ctx.drawImage(videoEl, 0, 0, w, h)
+  ctx.drawImage(el, 0, 0, w, h)
   return canvas.toDataURL('image/jpeg', 0.8)
 }

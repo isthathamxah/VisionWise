@@ -51,10 +51,19 @@ export function useDetection(videoRef, isVideoReady) {
 
   const topPrediction = predictions[0] || null
 
+  // One-shot detection on a static image (upload flow) — reuses the already-loaded
+  // model instead of the video requestAnimationFrame loop above.
+  const detectImage = async (imgEl) => {
+    if (!modelRef.current) return []
+    const preds = await modelRef.current.detect(imgEl)
+    return preds.filter(p => p.score > 0.5)
+  }
+
   return {
     predictions,
     isModelLoaded,
     detectedObject: topPrediction?.class || null,
     confidence: topPrediction ? Math.round(topPrediction.score * 100) : null,
+    detectImage,
   }
 }
