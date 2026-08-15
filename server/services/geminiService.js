@@ -3,47 +3,25 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' })
 
-const contextDescriptions = {
-  health: 'judge the nutritional or health impact on a human body',
-  eco: 'judge the environmental impact, recyclability, or sustainability',
-  productivity: 'judge whether this object aids or distracts from work or study',
-  finance: 'judge whether this object represents good or poor financial value'
-}
-
-// Fallback rules used when Gemini is rate-limited
+// Rules used when Gemini is rate-limited
 const fallbackRules = {
-  health: {
-    good: ['apple', 'orange', 'banana', 'broccoli', 'carrot', 'sandwich', 'salad', 'water bottle', 'book'],
-    bad: ['hot dog', 'pizza', 'donut', 'cake', 'wine glass', 'bottle', 'cup', 'cell phone'],
-  },
-  eco: {
-    good: ['potted plant', 'book', 'bicycle', 'backpack', 'scissors', 'vase'],
-    bad: ['bottle', 'cup', 'cell phone', 'laptop', 'tv', 'remote', 'car'],
-  },
-  productivity: {
-    good: ['laptop', 'book', 'keyboard', 'mouse', 'scissors', 'clock', 'pen', 'notebook'],
-    bad: ['cell phone', 'tv', 'remote', 'gaming controller', 'cup', 'couch'],
-  },
-  finance: {
-    good: ['book', 'laptop', 'bicycle', 'backpack', 'keyboard'],
-    bad: ['wine glass', 'tv', 'cell phone'],
-  }
+  good: ['apple', 'orange', 'banana', 'broccoli', 'carrot', 'sandwich', 'salad', 'water bottle', 'book'],
+  bad: ['hot dog', 'pizza', 'donut', 'cake', 'wine glass', 'bottle', 'cup', 'cell phone'],
 }
 
-function getFallbackVerdict(objectLabel, context) {
+function getFallbackVerdict(objectLabel) {
   const label = objectLabel.toLowerCase()
-  const rules = fallbackRules[context] || fallbackRules.health
 
-  const isGood = rules.good?.some(item => label.includes(item) || item.includes(label))
-  const isBad = rules.bad?.some(item => label.includes(item) || item.includes(label))
+  const isGood = fallbackRules.good.some(item => label.includes(item) || item.includes(label))
+  const isBad = fallbackRules.bad.some(item => label.includes(item) || item.includes(label))
 
   const verdict = isGood ? 'Good' : isBad ? 'Bad' : 'Neutral'
   const score = isGood ? 75 : isBad ? 25 : 50
 
   const reasons = {
-    Good: `A ${objectLabel} is generally considered positive in the ${context} context.`,
-    Bad: `A ${objectLabel} may have a negative impact in the ${context} context.`,
-    Neutral: `A ${objectLabel} has a neutral impact in the ${context} context.`
+    Good: `A ${objectLabel} is generally considered positive for your health.`,
+    Bad: `A ${objectLabel} may have a negative health impact.`,
+    Neutral: `A ${objectLabel} has a neutral health impact.`
   }
 
   return {
@@ -51,7 +29,7 @@ function getFallbackVerdict(objectLabel, context) {
     score,
     reason: reasons[verdict],
     tips: [
-      `Consider the full context when evaluating a ${objectLabel}.`,
+      `Consider portion size and frequency when evaluating a ${objectLabel}.`,
       `Usage habits matter more than the object itself.`,
       `For a detailed analysis, try again when the AI is available.`
     ],
@@ -107,20 +85,21 @@ export function sanitizeFood(food) {
   return clean
 }
 
-export async function getVerdict(objectLabel, context, imageBase64) {
-  const isHealth = context === 'health'
+export async function getVerdict(objectLabel, imageBase64) {
+  const prompt = `You are a health and nutrition evaluator for the VisionWise app.
+The user scanned a "${objectLabel}" and wants to know whether it's good, neutral or bad for their health.
 
-  const breakdownInstruction = isHealth
-    ? `Break the object down into 3-5 key components or factors that drove your verdict, with a percent weight each summing to 100 — UNLESS the object is food, in which case return an empty breakdown array (the nutrition data below covers that role instead).`
-    : `Also break the object down into 3-5 key components or factors that drove your verdict (e.g. materials or usage factors) with a percent weight each, summing to 100.`
+Break the object down into 3-5 key components or factors that drove your verdict, with a percent weight each summing to 100 — UNLESS the object is food, in which case return an empty breakdown array (the nutrition data below covers that role instead).
 
-  // Food analysis only makes sense under the health context — asking for it under eco/focus/money
-  // would just be wasted output the app throws away (sanitizeFood forces it to undefined there anyway).
-  const foodInstruction = isHealth ? `
+If the scanned object is food (a dish or a packaged food/drink product), additionally analyze it and include a "food" object in your JSON response. Use dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise use dishType "dish" and source "estimated". Never invent numbers: if the object is food but the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. If the object is not food, omit the "food" field entirely. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Also set each nutrient's "direction" to "limit" (something people should generally moderate in large amounts, e.g. sugar, sodium, saturated fat), "beneficial" (generally good in reasonable amounts, e.g. fiber, protein, vitamins), or "neutral" (neither clearly applies) — this drives how it's color-coded, separately from how much of it is present. Keep each ingredient explanation to one short sentence.
 
-If the scanned object is food (a dish or a packaged food/drink product), additionally analyze it and include a "food" object in your JSON response. Use dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise use dishType "dish" and source "estimated". Never invent numbers: if the object is food but the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. If the object is not food, omit the "food" field entirely. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Also set each nutrient's "direction" to "limit" (something people should generally moderate in large amounts, e.g. sugar, sodium, saturated fat), "beneficial" (generally good in reasonable amounts, e.g. fiber, protein, vitamins), or "neutral" (neither clearly applies) — this drives how it's color-coded, separately from how much of it is present. Keep each ingredient explanation to one short sentence.` : ''
-
-  const foodJsonField = isHealth ? `,
+Respond with ONLY valid JSON (no markdown, no extra text):
+{
+  "verdict": "Good" or "Bad" or "Neutral",
+  "score": <integer between 0 and 100>,
+  "reason": "<one clear sentence explanation>",
+  "tips": ["<actionable tip 1>", "<actionable tip 2>", "<actionable tip 3>"],
+  "breakdown": [{"label": "<component or factor>", "percent": <integer, sums to 100 across items>}],
   "food": {
     "isFood": <true or false>,
     "dishType": "dish" or "packaged",
@@ -129,21 +108,7 @@ If the scanned object is food (a dish or a packaged food/drink product), additio
     "unclear": <true or false>,
     "nutrients": [{"label": "Calories", "amount": <number>, "unit": "kcal", "percentDV": <integer>, "impact": "Low" or "Moderate" or "High", "direction": "limit" or "beneficial" or "neutral", "note": "<one sentence>"}],
     "ingredients": [{"name": "<ingredient>", "whatItIs": "<one sentence>", "whyUsed": "<one sentence>", "effect": "<one sentence>", "concern": "Low" or "Moderate" or "High" or null}]
-  }` : ''
-
-  const prompt = `You are a contextual object evaluator for the VisionWise app.
-The user scanned a "${objectLabel}" and wants to evaluate it in the "${context}" context.
-Your job: ${contextDescriptions[context]}.
-
-${breakdownInstruction}${foodInstruction}
-
-Respond with ONLY valid JSON (no markdown, no extra text):
-{
-  "verdict": "Good" or "Bad" or "Neutral",
-  "score": <integer between 0 and 100>,
-  "reason": "<one clear sentence explanation>",
-  "tips": ["<actionable tip 1>", "<actionable tip 2>", "<actionable tip 3>"],
-  "breakdown": [{"label": "<component or factor>", "percent": <integer, sums to 100 across items>}]${foodJsonField}
+  }
 }
 
 Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
@@ -162,13 +127,13 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
           .slice(0, 5)
           .map(b => ({ label: String(b.label).slice(0, 60), percent: Math.max(0, Math.min(100, Math.round(b.percent))) }))
       : []
-    parsed.food = context === 'health' ? sanitizeFood(parsed.food) : undefined
+    parsed.food = sanitizeFood(parsed.food)
     return parsed
   } catch (err) {
     // On rate limit, use fallback so the app keeps working
     if (err.message?.includes('429') || err.status === 429) {
       console.log('[Gemini] Rate limited — using fallback verdict')
-      return getFallbackVerdict(objectLabel, context)
+      return getFallbackVerdict(objectLabel)
     }
     throw err
   }

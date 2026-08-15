@@ -6,7 +6,6 @@ export const getHistory = async (req, res) => {
   const skip = (page - 1) * limit
 
   const filter = { userId: req.user._id }
-  if (req.query.context) filter.context = req.query.context
 
   try {
     const [scans, total] = await Promise.all([
@@ -41,13 +40,7 @@ export const getAnalytics = async (req, res) => {
     })
     const chartData = Object.entries(byDate).map(([date, count]) => ({ date, count }))
 
-    // Group by context
-    const contextBreakdown = {}
-    scans.forEach(s => {
-      contextBreakdown[s.context] = (contextBreakdown[s.context] || 0) + 1
-    })
-
-    res.json({ weeklyScore, chartData, contextBreakdown, totalScans: scans.length })
+    res.json({ weeklyScore, chartData, totalScans: scans.length })
   } catch {
     res.status(500).json({ error: 'Failed to fetch analytics' })
   }

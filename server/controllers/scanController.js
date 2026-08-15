@@ -6,14 +6,14 @@ export const scan = async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
 
-  const { imageBase64, objectLabel, context } = req.body
+  const { imageBase64, objectLabel } = req.body
   try {
-    const verdictData = await getVerdict(objectLabel, context, imageBase64)
+    const verdictData = await getVerdict(objectLabel, imageBase64)
 
     const scanLog = await ScanLog.create({
       userId: req.user._id,
       objectLabel,
-      context,
+      context: 'health',
       verdict: verdictData.verdict,
       score: verdictData.score,
       reason: verdictData.reason,

@@ -8,7 +8,6 @@ const router = Router()
 
 router.post('/', protect, scanLimiter, [
   body('objectLabel').trim().isLength({ min: 1, max: 100 }).escape(),
-  body('context').isIn(['health', 'eco', 'productivity', 'finance']),
   body('imageBase64').isString().isLength({ max: 200000 })
 ], scan)
 
