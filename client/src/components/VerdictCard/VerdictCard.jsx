@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Share2, Wifi } from 'lucide-react'
 import BreakdownChart from '../InfographicChart/BreakdownChart'
+import NutritionPanel from '../InfographicChart/NutritionPanel'
+import IngredientInfographic from '../InfographicChart/IngredientInfographic'
 
 const cfg = {
   Good:    { icon: CheckCircle2,  text: 'text-good',    bar: 'rgb(var(--good))',    soft: 'bg-good/10 border-good/25' },
@@ -54,7 +56,24 @@ export default function VerdictCard({ result, onScanAgain }) {
 
       <p className="text-text leading-relaxed mb-5">{result.reason}</p>
 
-      <BreakdownChart breakdown={result.breakdown} />
+      {result.food?.isFood ? (
+        <>
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-4 bg-surface2 border border-border">
+            <span className="font-mono text-[10px] text-faint uppercase">
+              {result.food.source === 'label' ? 'Read from package label' : 'Estimated from photo'}
+            </span>
+          </div>
+          <NutritionPanel nutrients={result.food.nutrients} servingNote={result.food.servingNote} unclear={result.food.unclear} />
+          <IngredientInfographic ingredients={result.food.ingredients} />
+          {!result.food.unclear && (
+            <p className="text-[11px] text-faint leading-relaxed mb-5">
+              General educational information, not medical advice — portion size and frequency matter.
+            </p>
+          )}
+        </>
+      ) : (
+        <BreakdownChart breakdown={result.breakdown} />
+      )}
 
       {result.tips?.length > 0 && (
         <div className="rounded-xl2 p-4 mb-5 bg-surface2 border border-border">
