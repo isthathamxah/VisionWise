@@ -119,23 +119,12 @@ export default function Scanner() {
   return (
     <div className="container-vw py-6 md:py-10">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
-          <div>
-            <span className="eyebrow">Scanner</span>
-            <h1 className="font-display font-extrabold text-2xl md:text-3xl text-text mt-2">Point &amp; scan</h1>
-          </div>
-
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} hidden />
-          {uploadedSrc ? (
-            <button onClick={useCameraInstead} className="btn-outline h-10 px-4">
-              <RotateCcw size={15} /> Use camera instead
-            </button>
-          ) : (
-            <button onClick={() => fileInputRef.current?.click()} disabled={!isModelLoaded} className="btn-outline h-10 px-4">
-              <Upload size={15} /> Upload photo
-            </button>
-          )}
+        <div className="mb-6">
+          <span className="eyebrow">Scanner</span>
+          <h1 className="font-display font-extrabold text-2xl md:text-3xl text-text mt-2">Point &amp; scan</h1>
         </div>
+
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} hidden />
 
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-start">
           {/* Left: camera / upload */}
@@ -168,16 +157,16 @@ export default function Scanner() {
               )}
 
               {capturedPreview ? (
-                <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2">
-                  <button onClick={retakePhoto} className="btn-outline flex-1 h-10 bg-black/70 backdrop-blur text-white border-white/20 hover:bg-black/80">
+                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center gap-2">
+                  <button onClick={retakePhoto} className="btn-outline flex-1 h-11 bg-black/70 backdrop-blur text-white border-white/20 hover:bg-black/80">
                     <RotateCcw size={15} /> Retake
                   </button>
-                  <button onClick={confirmCapture} className="btn-brand flex-1 h-10">
+                  <button onClick={confirmCapture} className="btn-brand flex-1 h-11">
                     <Check size={15} /> Use this photo
                   </button>
                 </div>
               ) : detectedObject && (
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/70 backdrop-blur border border-white/10">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse-dot" />
                     <span className="font-mono text-xs text-white capitalize">{detectedObject}</span>
@@ -186,17 +175,30 @@ export default function Scanner() {
                 </div>
               )}
 
-              {!uploadedSrc && !capturedPreview && (
-                <div className="absolute top-3 right-3 flex items-center gap-2">
+              {/* One control cluster, one physical spot, for however the image gets there */}
+              {uploadedSrc ? (
+                <button onClick={useCameraInstead}
+                  className="absolute top-3 right-3 z-10 btn-outline h-10 px-3 bg-black/60 backdrop-blur text-white border-white/20 hover:bg-black/80">
+                  <RotateCcw size={15} /> Use camera
+                </button>
+              ) : !capturedPreview && (
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+                  {isModelLoaded && (
+                    <button onClick={() => fileInputRef.current?.click()}
+                      className="p-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
+                      aria-label="Upload photo">
+                      <Upload size={17} />
+                    </button>
+                  )}
                   {isReady && (
                     <button onClick={handleCapture} disabled={isScanning}
-                      className="p-2.5 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Take picture">
                       <Aperture size={17} />
                     </button>
                   )}
                   <button onClick={flipCamera}
-                    className="p-2.5 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
+                    className="p-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
                     aria-label="Flip camera">
                     <FlipHorizontal2 size={17} />
                   </button>
