@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Share2, Wifi } from 'lucide-react'
+import BreakdownChart from '../InfographicChart/BreakdownChart'
 
 const cfg = {
   Good:    { icon: CheckCircle2,  text: 'text-good',    bar: 'rgb(var(--good))',    soft: 'bg-good/10 border-good/25' },
@@ -52,6 +53,8 @@ export default function VerdictCard({ result, onScanAgain }) {
       </div>
 
       <p className="text-text leading-relaxed mb-5">{result.reason}</p>
+
+      <BreakdownChart breakdown={result.breakdown} />
 
       {result.tips?.length > 0 && (
         <div className="rounded-xl2 p-4 mb-5 bg-surface2 border border-border">

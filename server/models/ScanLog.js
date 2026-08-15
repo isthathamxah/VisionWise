@@ -36,6 +36,10 @@ const scanLogSchema = new mongoose.Schema({
   tips: {
     type: [String],
     default: []
+  },
+  breakdown: {
+    type: [{ label: String, percent: Number, _id: false }],
+    default: []
   }
 }, { timestamps: true })
 

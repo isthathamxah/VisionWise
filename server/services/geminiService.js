@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' })
 
 const contextDescriptions = {
   health: 'judge the nutritional or health impact on a human body',
@@ -64,12 +64,15 @@ export async function getVerdict(objectLabel, context, imageBase64) {
 The user scanned a "${objectLabel}" and wants to evaluate it in the "${context}" context.
 Your job: ${contextDescriptions[context]}.
 
+Also break the object down into 3-5 key components or factors that drove your verdict (e.g. for food: ingredients/nutrients; for a device: materials or usage factors) with a percent weight each, summing to 100.
+
 Respond with ONLY valid JSON (no markdown, no extra text):
 {
   "verdict": "Good" or "Bad" or "Neutral",
   "score": <integer between 0 and 100>,
   "reason": "<one clear sentence explanation>",
-  "tips": ["<actionable tip 1>", "<actionable tip 2>", "<actionable tip 3>"]
+  "tips": ["<actionable tip 1>", "<actionable tip 2>", "<actionable tip 3>"],
+  "breakdown": [{"label": "<component or factor>", "percent": <integer, sums to 100 across items>}]
 }
 
 Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
@@ -81,7 +84,14 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
     const result = await model.generateContent([prompt, imagePart])
     const text = result.response.text().trim()
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    return JSON.parse(cleaned)
+    const parsed = JSON.parse(cleaned)
+    parsed.breakdown = Array.isArray(parsed.breakdown)
+      ? parsed.breakdown
+          .filter(b => b?.label && Number.isFinite(b.percent))
+          .slice(0, 5)
+          .map(b => ({ label: String(b.label).slice(0, 60), percent: Math.max(0, Math.min(100, Math.round(b.percent))) }))
+      : []
+    return parsed
   } catch (err) {
     // On rate limit, use fallback so the app keeps working
     if (err.message?.includes('429') || err.status === 429) {
