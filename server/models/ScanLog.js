@@ -40,6 +40,18 @@ const scanLogSchema = new mongoose.Schema({
   breakdown: {
     type: [{ label: String, percent: Number, _id: false }],
     default: []
+  },
+  food: {
+    type: {
+      isFood: Boolean,
+      dishType: String,
+      source: String,
+      servingNote: String,
+      unclear: Boolean,
+      nutrients: [{ label: String, amount: Number, unit: String, percentDV: Number, impact: String, note: String, _id: false }],
+      ingredients: [{ name: String, whatItIs: String, whyUsed: String, effect: String, concern: String, _id: false }]
+    },
+    default: undefined
   }
 }, { timestamps: true })
 

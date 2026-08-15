@@ -18,7 +18,8 @@ export const scan = async (req, res) => {
       score: verdictData.score,
       reason: verdictData.reason,
       tips: verdictData.tips,
-      breakdown: verdictData.breakdown || []
+      breakdown: verdictData.breakdown || [],
+      food: verdictData.food
     })
 
     res.json({ ...verdictData, scanLogId: scanLog._id })
