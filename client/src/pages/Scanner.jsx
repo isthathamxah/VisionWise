@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FlipHorizontal2, Zap, ScanLine, Upload, RotateCcw } from 'lucide-react'
+import { FlipHorizontal2, Zap, ScanLine, Upload, RotateCcw, Aperture, Check } from 'lucide-react'
 import Camera from '../components/Camera/Camera'
 import ContextSelector from '../components/ContextSelector/ContextSelector'
 import VerdictCard from '../components/VerdictCard/VerdictCard'
@@ -33,25 +33,44 @@ export default function Scanner() {
   const [uploadedSrc, setUploadedSrc] = useState(null)
   const [uploadPrediction, setUploadPrediction] = useState(null)
   const [isDetectingUpload, setIsDetectingUpload] = useState(false)
+  const [capturedPreview, setCapturedPreview] = useState(null) // just-taken photo, awaiting retake/confirm
 
   useEffect(() => {
     startCamera()
     return () => stopCamera()
   }, [])
 
-  const detectedObject = uploadedSrc ? uploadPrediction?.class || null : liveObject
-  const confidence = uploadedSrc ? (uploadPrediction ? Math.round(uploadPrediction.score * 100) : null) : liveConfidence
+  // While reviewing a just-taken photo, ignore stale live-detection state entirely —
+  // it belongs to the frame under the preview, not the frozen shot on top of it.
+  const detectedObject = capturedPreview ? null : uploadedSrc ? uploadPrediction?.class || null : liveObject
+  const confidence = capturedPreview ? null : uploadedSrc ? (uploadPrediction ? Math.round(uploadPrediction.score * 100) : null) : liveConfidence
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file later
     if (!file) return
     uploadTokenRef.current += 1
-    setScanResult(null); setScanError(''); setUploadPrediction(null); setIsDetectingUpload(true)
+    setScanResult(null); setScanError(''); setUploadPrediction(null); setIsDetectingUpload(true); setCapturedPreview(null)
     stopCamera() // release the camera while a static photo is shown
     const reader = new FileReader()
     reader.onload = () => setUploadedSrc(reader.result)
     reader.readAsDataURL(file)
+  }
+
+  const handleCapture = () => {
+    if (!videoRef.current) return
+    setCapturedPreview(captureFrame(videoRef.current))
+  }
+
+  const retakePhoto = () => setCapturedPreview(null)
+
+  const confirmCapture = () => {
+    if (!capturedPreview) return
+    uploadTokenRef.current += 1
+    setScanResult(null); setScanError(''); setUploadPrediction(null); setIsDetectingUpload(true)
+    stopCamera() // same handoff as a file upload — this is now a static image to scan
+    setUploadedSrc(capturedPreview)
+    setCapturedPreview(null)
   }
 
   const handleUploadImgLoad = async () => {
@@ -75,7 +94,7 @@ export default function Scanner() {
 
   const useCameraInstead = () => {
     uploadTokenRef.current += 1
-    setUploadedSrc(null); setUploadPrediction(null); setScanResult(null); setScanError(''); setIsDetectingUpload(false)
+    setUploadedSrc(null); setUploadPrediction(null); setScanResult(null); setScanError(''); setIsDetectingUpload(false); setCapturedPreview(null)
     startCamera()
   }
 
@@ -93,8 +112,8 @@ export default function Scanner() {
     } finally { setIsScanning(false) }
   }
 
-  const showSweep = !uploadedSrc && isReady && isModelLoaded && !scanResult && !isScanning
-  const showLockOnHint = !detectedObject && !isDetectingUpload && !scanResult && (uploadedSrc ? true : (isModelLoaded && isReady))
+  const showSweep = !uploadedSrc && !capturedPreview && isReady && isModelLoaded && !scanResult && !isScanning
+  const showLockOnHint = !capturedPreview && !detectedObject && !isDetectingUpload && !scanResult && (uploadedSrc ? true : (isModelLoaded && isReady))
 
   return (
     <div className="container-vw py-6 md:py-10">
@@ -136,6 +155,10 @@ export default function Scanner() {
                 <Camera videoRef={videoRef} predictions={predictions} verdict={scanResult?.verdict || null} />
               )}
 
+              {capturedPreview && (
+                <img src={capturedPreview} alt="Captured preview" className="absolute inset-0 w-full h-full object-cover" />
+              )}
+
               {(uploadedSrc || isReady) && <><Corner pos="tl" /><Corner pos="tr" /><Corner pos="bl" /><Corner pos="br" /></>}
 
               {showSweep && (
@@ -143,7 +166,16 @@ export default function Scanner() {
                   style={{ background: 'rgb(var(--brand))', boxShadow: '0 0 14px rgb(var(--brand))', animation: 'scan 2.8s ease-in-out infinite' }} />
               )}
 
-              {detectedObject && (
+              {capturedPreview ? (
+                <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2">
+                  <button onClick={retakePhoto} className="btn-outline flex-1 h-10 bg-black/70 backdrop-blur text-white border-white/20 hover:bg-black/80">
+                    <RotateCcw size={15} /> Retake
+                  </button>
+                  <button onClick={confirmCapture} className="btn-brand flex-1 h-10">
+                    <Check size={15} /> Use this photo
+                  </button>
+                </div>
+              ) : detectedObject && (
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/70 backdrop-blur border border-white/10">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse-dot" />
@@ -153,15 +185,24 @@ export default function Scanner() {
                 </div>
               )}
 
-              {!uploadedSrc && (
-                <button onClick={flipCamera}
-                  className="absolute top-3 right-3 p-2.5 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
-                  aria-label="Flip camera">
-                  <FlipHorizontal2 size={17} />
-                </button>
+              {!uploadedSrc && !capturedPreview && (
+                <div className="absolute top-3 right-3 flex items-center gap-2">
+                  {isReady && (
+                    <button onClick={handleCapture}
+                      className="p-2.5 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
+                      aria-label="Take picture">
+                      <Aperture size={17} />
+                    </button>
+                  )}
+                  <button onClick={flipCamera}
+                    className="p-2.5 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
+                    aria-label="Flip camera">
+                    <FlipHorizontal2 size={17} />
+                  </button>
+                </div>
               )}
 
-              {!uploadedSrc && !isModelLoaded && !camError && (
+              {!uploadedSrc && !capturedPreview && !isModelLoaded && !camError && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/75">
                   <div className="w-7 h-7 border-2 border-white/20 border-t-brand rounded-full animate-spin" />
                   <span className="font-mono text-xs text-white/80 uppercase tracking-wider">Loading model</span>
@@ -175,7 +216,7 @@ export default function Scanner() {
                 </div>
               )}
 
-              {!uploadedSrc && camError && (
+              {!uploadedSrc && !capturedPreview && camError && (
                 <div className="absolute inset-0 flex items-center justify-center p-6 bg-black/90 text-center">
                   <div>
                     <p className="text-bad text-sm font-medium mb-1">Camera unavailable</p>
