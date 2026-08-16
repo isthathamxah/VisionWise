@@ -12,6 +12,11 @@ import historyRoutes from './routes/history.js'
 const app = express()
 const PORT = process.env.PORT || 5000
 
+// Render (and most hosts) sit the app behind one reverse proxy, which sets
+// X-Forwarded-For. Without this, Express doesn't trust that header, so
+// express-rate-limit can't reliably tell real clients apart by IP.
+app.set('trust proxy', 1)
+
 // Security middleware
 app.use(helmet())
 
