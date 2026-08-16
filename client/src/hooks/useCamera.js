@@ -19,9 +19,17 @@ export function useCamera() {
       })
       streamRef.current = stream
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play().catch(() => {})
-        videoRef.current.onloadedmetadata = () => setIsReady(true)
+        const video = videoRef.current
+        video.srcObject = stream
+        // Attach the handler before awaiting play() — on fast hardware (most
+        // phones) 'loadedmetadata' can fire while play() is still pending, and a
+        // handler attached after that await misses the event forever. isReady
+        // then never flips true, which silently disables the detection loop,
+        // the capture button, and the scan button — while the video itself
+        // keeps playing natively via autoPlay, making it look like "it works".
+        video.onloadedmetadata = () => setIsReady(true)
+        await video.play().catch(() => {})
+        if (video.readyState >= 1) setIsReady(true) // metadata already there by the time play() resolved
       }
       setError(null)
     } catch (err) {
