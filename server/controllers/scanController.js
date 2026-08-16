@@ -28,6 +28,6 @@ export const scan = async (req, res) => {
     if (err instanceof SyntaxError) {
       return res.status(502).json({ error: 'AI response parsing failed. Please try again.' })
     }
-    res.status(503).json({ error: 'Verdict service temporarily unavailable.' })
+    res.status(503).json({ error: 'Verdict service temporarily unavailable.', debug: err.message, debugStatus: err.status, debugName: err.name }) // TODO: remove once diagnosed
   }
 }
