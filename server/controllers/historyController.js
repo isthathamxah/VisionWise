@@ -1,11 +1,15 @@
 import ScanLog from '../models/ScanLog.js'
 
+const escapeRegex = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 export const getHistory = async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1)
   const limit = Math.min(20, parseInt(req.query.limit) || 10)
   const skip = (page - 1) * limit
 
   const filter = { userId: req.user._id }
+  if (req.query.q) filter.objectLabel = new RegExp(escapeRegex(String(req.query.q).slice(0, 60)), 'i')
+  if (['Good', 'Bad', 'Neutral'].includes(req.query.verdict)) filter.verdict = req.query.verdict
 
   try {
     const [scans, total] = await Promise.all([

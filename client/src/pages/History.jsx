@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Target, Utensils, TriangleAlert, RefreshCw } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Target, Utensils, TriangleAlert, RefreshCw, Search, X } from 'lucide-react'
 import InfographicChart from '../components/InfographicChart/InfographicChart'
 import StatCard from '../components/StatCard/StatCard'
 import BottomSheet from '../components/BottomSheet/BottomSheet'
@@ -163,12 +163,24 @@ export default function History() {
   const [pages, setPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null) // the scan pending delete confirmation
+  const [q, setQ] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
+  const [verdictFilter, setVerdictFilter] = useState('')
+
+  // Debounce search text so it doesn't fire a request on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300)
+    return () => clearTimeout(t)
+  }, [q])
+
+  // A changed filter invalidates whatever page you were on.
+  useEffect(() => { setPage(1) }, [debouncedQ, verdictFilter])
 
   const fetchData = async () => {
     setLoading(true)
     try {
       const [hist, ana] = await Promise.all([
-        api.get('/history', { params: { page, limit: 8 } }),
+        api.get('/history', { params: { page, limit: 8, q: debouncedQ || undefined, verdict: verdictFilter || undefined } }),
         api.get('/history/analytics'),
       ])
       setScans(hist.data.scans); setPages(hist.data.pages); setAnalytics(ana.data)
@@ -177,7 +189,7 @@ export default function History() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchData() }, [page])
+  useEffect(() => { fetchData() }, [page, debouncedQ, verdictFilter])
 
   const { pullDistance, refreshing } = usePullToRefresh(fetchData)
 
@@ -221,6 +233,30 @@ export default function History() {
         </div>
       )}
 
+      {/* Search + verdict filter */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search by object…"
+            className="field pl-10 pr-9" aria-label="Search scan history" />
+          {q && (
+            <button onClick={() => setQ('')} aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-faint hover:text-text cursor-pointer">
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2 overflow-x-auto scrollbar-none">
+          {['', 'Good', 'Neutral', 'Bad'].map(v => (
+            <button key={v || 'all'} onClick={() => setVerdictFilter(v)}
+              className={`px-3.5 h-11 sm:h-auto rounded-xl2 font-mono text-xs uppercase tracking-wider shrink-0 cursor-pointer transition-colors border ${
+                verdictFilter === v ? 'bg-brand text-white border-brand' : 'bg-surface text-muted border-border hover:border-brand'}`}>
+              {v || 'All'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* List */}
       {loading ? (
         <div className="grid sm:grid-cols-2 gap-3">
@@ -228,7 +264,9 @@ export default function History() {
         </div>
       ) : scans.length === 0 ? (
         <div className="card py-16 text-center">
-          <p className="text-muted">No scans logged yet. Go scan something!</p>
+          <p className="text-muted">
+            {debouncedQ || verdictFilter ? 'No scans match this search.' : 'No scans logged yet. Go scan something!'}
+          </p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">
