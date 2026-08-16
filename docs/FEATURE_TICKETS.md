@@ -108,9 +108,11 @@ the product narrowed to food and nutrition only. See PRD.md §0.*
 | VW-048 | Account Page (real page, not a sheet) | 🟠 | ✅ | Profile card, stats, theme toggle, sign out |
 | VW-049 | Scan Detail Page (real page, not a modal) | 🟠 | ✅ | /history/:id — deep-linkable, shareable |
 | VW-050 | Editable Profile (name, password, avatar) | 🟠 | ✅ | PATCH /auth/profile, /auth/password, /auth/avatar |
-| VW-051 | Password Reset via Email | 🟡 | 🔵 | Forgot-password flow, email delivery via Gmail SMTP |
+| VW-051 | Password Reset via Email | 🟡 | ✅ | POST /auth/forgot-password + /auth/reset-password, Gmail SMTP. Reset token is a signed JWT carrying the current password hash (doubles as single-use enforcement, no DB field needed); rate-limited 3/15min |
 | VW-052 | Client-side Test Suite | 🟡 | ✅ | Vitest + Testing Library; covers pure logic (nutrientStyle, getApiError) and a VerdictCard render smoke test |
 | VW-053 | CI Pipeline | 🟢 | ⬜ | Not started |
+| VW-054 | Onboarding Walkthrough | 🟡 | ✅ | One-time BottomSheet on first Scanner visit, shares content with Home's "How it works" |
+| VW-055 | Share Includes a Real Link | 🟡 | ✅ | VerdictCard's Share button now includes the scan's /history/:id URL, not just text |
 
 ---
 
@@ -123,8 +125,8 @@ the product narrowed to food and nutrition only. See PRD.md §0.*
 | Verdict | VW-019–025 | 7 | 0 |
 | History | VW-026–033 | 9 | 0 |
 | UI/Polish | VW-034–040 | 6 | 2 (AR glow descoped, deployment pending) |
-| Mobile App Pass | VW-041–053 | 11 | 2 (password reset in progress, CI pending) |
-| **Total** | **53** | **51** | **2 pending, 1 in progress** |
+| Mobile App Pass | VW-041–055 | 14 | 1 (CI pending) |
+| **Total** | **55** | **53** | **2 pending** |
 
 Remaining before this can be called feature-complete for the FYP submission:
 deployment (VW-040) and, optionally, a CI pipeline (VW-053).
