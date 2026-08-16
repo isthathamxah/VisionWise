@@ -24,6 +24,7 @@ export const scan = async (req, res) => {
 
     res.json({ ...verdictData, scanLogId: scanLog._id })
   } catch (err) {
+    console.error('[scan] verdict failed:', err)
     if (err instanceof SyntaxError) {
       return res.status(502).json({ error: 'AI response parsing failed. Please try again.' })
     }
