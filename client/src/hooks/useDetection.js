@@ -5,8 +5,8 @@ import { useToast } from '../context/ToastContext'
 
 export function useDetection(videoRef, isVideoReady) {
   const showToast = useToast()
-  const modelRef = useRef(null) // fast backbone — drives the real-time video loop
-  const fullModelPromiseRef = useRef(null) // heavier, more accurate backbone — one-shot upload/capture only
+  const modelRef = useRef(null) // fast backbone — drives the real-time video loop, and the immediate fallback below
+  const fullModelRef = useRef(null) // heavier, more accurate backbone — used for one-shot detection once ready, but never blocked on
   const rafRef = useRef(null)
   const mountedRef = useRef(true)
   const warnedRef = useRef(false) // only surface one toast per session, not one per failed frame
@@ -30,18 +30,17 @@ export function useDetection(videoRef, isVideoReady) {
     // A one-shot scan of a static photo has no 30fps constraint, so the extra
     // accuracy is worth it — confirmed empirically: the lite backbone misses real
     // objects (e.g. a car at 0.37 confidence, just under the 0.5 cutoff) that the
-    // full backbone catches (0.61). But started in parallel with the lite model,
-    // both downloads compete for the same connection — on mobile data that
-    // measurably delayed the lite model landing, which is what unlocks the whole
-    // scanner UI (isModelLoaded gates the Upload button and the live loop).
-    // Chaining after litePromise keeps the fast path fast; detectImage() already
-    // awaits this promise, so upload/capture just wait a little longer the first time.
-    fullModelPromiseRef.current = litePromise.then(() =>
-      cocoSsd.load({ base: 'mobilenet_v2' }).catch(err => {
-        console.error('[detection] full-accuracy model failed to load, falling back to the fast one:', err)
-        return null
-      })
-    )
+    // full backbone catches (0.61). Chained after litePromise (not started in
+    // parallel) so it never competes for bandwidth with the fast model that
+    // unlocks the UI. detectImage() below only USES this if it has already
+    // finished — never awaits/blocks on it, since that would mean every capture
+    // taken before this ~27MB download completes hangs on "Detecting…" for it.
+    litePromise.then(() => {
+      if (!mountedRef.current) return
+      cocoSsd.load({ base: 'mobilenet_v2' })
+        .then(model => { if (mountedRef.current) fullModelRef.current = model })
+        .catch(err => console.error('[detection] full-accuracy model failed to load, staying on the fast one:', err))
+    })
     return () => {
       mountedRef.current = false
       cancelAnimationFrame(rafRef.current)
@@ -86,11 +85,13 @@ export function useDetection(videoRef, isVideoReady) {
 
   const topPrediction = predictions[0] || null
 
-  // One-shot detection on a static image (upload/capture flow) — uses the more
-  // accurate backbone (falls back to the fast one if it failed to load) instead
-  // of the video requestAnimationFrame loop above.
+  // One-shot detection on a static image (upload/capture flow) — instead of the
+  // video requestAnimationFrame loop above. Uses the accurate backbone if it has
+  // already finished loading in the background; otherwise uses the fast one
+  // immediately rather than waiting — modelRef.current is guaranteed set by now,
+  // since Upload/Capture only render once isModelLoaded is true.
   const detectImage = async (imgEl) => {
-    const model = (await fullModelPromiseRef.current) || modelRef.current
+    const model = fullModelRef.current || modelRef.current
     if (!model) return []
     try {
       const preds = await model.detect(imgEl)
