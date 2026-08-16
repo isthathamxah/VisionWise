@@ -39,8 +39,12 @@ export default function VerdictCard({ result, onScanAgain, actionLabel = 'Scan a
 
   const handleShare = async () => {
     const text = `VisionWise — ${result.verdict} (${result.score}/100): ${result.reason}`
-    if (navigator.share) await navigator.share({ title: 'VisionWise verdict', text }).catch(() => {})
-    else await navigator.clipboard.writeText(text).catch(() => {})
+    // A fresh scan carries scanLogId; one loaded from history carries _id — either way,
+    // if we have an id the scan has a real page to link to.
+    const id = result.scanLogId || result._id
+    const url = id ? `${window.location.origin}/history/${id}` : undefined
+    if (navigator.share) await navigator.share({ title: 'VisionWise verdict', text, url }).catch(() => {})
+    else await navigator.clipboard.writeText(url ? `${text}\n${url}` : text).catch(() => {})
   }
 
   return (
