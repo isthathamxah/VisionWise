@@ -1,8 +1,16 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 // Generic bottom sheet — slides up from the bottom edge instead of a centered
-// overlay, matching the native mobile pattern. Used by History's scan detail
-// and delete-confirm, and by the bottom nav's account menu.
+// overlay, matching the native mobile pattern. Used by the Scanner's
+// first-visit onboarding and History's delete-confirm.
+//
+// Rendered via a portal straight to document.body: Shell's <main> carries a
+// page-transition `transform` (see App.jsx's animate-page-in), and any
+// element with a transform becomes a containing block for its
+// position:fixed descendants — without the portal, that silently pulled
+// this sheet's stacking (despite z-50) behind the sibling BottomNav (z-40),
+// intercepting taps on anything near the bottom of the sheet.
 export default function BottomSheet({ open, onClose, children, maxWidth = 'max-w-md' }) {
   useEffect(() => {
     if (!open) return
@@ -13,7 +21,7 @@ export default function BottomSheet({ open, onClose, children, maxWidth = 'max-w
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className={`w-full ${maxWidth} max-h-[85dvh] overflow-y-auto bg-surface rounded-t-2xl sm:rounded-b-2xl border border-border sm:mb-6 animate-slide-up sm:animate-reveal`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -23,6 +31,7 @@ export default function BottomSheet({ open, onClose, children, maxWidth = 'max-w
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
