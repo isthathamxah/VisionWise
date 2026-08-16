@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // ngrok's free tier assigns a new random subdomain per run, so this is
+    // scoped to the whole ngrok-free.dev domain rather than one hostname —
+    // still narrower than allowing any Host header.
+    allowedHosts: ['.ngrok-free.dev'],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
