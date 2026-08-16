@@ -6,6 +6,7 @@ import Onboarding from '../components/Onboarding/Onboarding'
 import { useCamera } from '../hooks/useCamera'
 import { useDetection } from '../hooks/useDetection'
 import { captureFrame } from '../utils/canvasOverlay'
+import { dedupeDetections } from '../utils/detections'
 import { useToast } from '../context/ToastContext'
 import api from '../services/api'
 
@@ -23,15 +24,16 @@ export default function Scanner() {
   const showToast = useToast()
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState(null)
+  const [manualSelection, setManualSelection] = useState(null) // object class tapped from the chip row, overriding the top detection
 
   const { videoRef, isReady, error: camError, startCamera, stopCamera, flipCamera } = useCamera()
-  const { predictions, isModelLoaded, detectedObject: liveObject, confidence: liveConfidence, detectImage } = useDetection(videoRef, isReady)
+  const { predictions: livePredictions, isModelLoaded, detectImage } = useDetection(videoRef, isReady)
 
   const fileInputRef = useRef(null)
   const uploadImgRef = useRef(null)
   const uploadTokenRef = useRef(0) // invalidates in-flight detection when superseded by a new upload or a switch back to camera
   const [uploadedSrc, setUploadedSrc] = useState(null)
-  const [uploadPrediction, setUploadPrediction] = useState(null)
+  const [uploadPredictions, setUploadPredictions] = useState([])
   const [isDetectingUpload, setIsDetectingUpload] = useState(false)
   const [capturedPreview, setCapturedPreview] = useState(null) // just-taken photo, awaiting retake/confirm
 
@@ -42,15 +44,17 @@ export default function Scanner() {
 
   // While reviewing a just-taken photo, ignore stale live-detection state entirely —
   // it belongs to the frame under the preview, not the frozen shot on top of it.
-  const detectedObject = capturedPreview ? null : uploadedSrc ? uploadPrediction?.class || null : liveObject
-  const confidence = capturedPreview ? null : uploadedSrc ? (uploadPrediction ? Math.round(uploadPrediction.score * 100) : null) : liveConfidence
+  const rawPredictions = capturedPreview ? [] : uploadedSrc ? uploadPredictions : livePredictions
+  const detections = dedupeDetections(rawPredictions) // one chip per distinct object class
+  const selected = detections.find(d => d.class === manualSelection) || detections[0] || null
+  const detectedObject = selected?.class || null
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file later
     if (!file) return
     uploadTokenRef.current += 1
-    setScanResult(null); setUploadPrediction(null); setIsDetectingUpload(true); setCapturedPreview(null)
+    setScanResult(null); setUploadPredictions([]); setIsDetectingUpload(true); setCapturedPreview(null); setManualSelection(null)
     stopCamera() // release the camera while a static photo is shown
     const reader = new FileReader()
     reader.onload = () => setUploadedSrc(reader.result)
@@ -68,7 +72,7 @@ export default function Scanner() {
   const confirmCapture = () => {
     if (!capturedPreview) return
     uploadTokenRef.current += 1
-    setScanResult(null); setUploadPrediction(null); setIsDetectingUpload(true)
+    setScanResult(null); setUploadPredictions([]); setIsDetectingUpload(true); setManualSelection(null)
     stopCamera() // same handoff as a file upload — this is now a static image to scan
     setUploadedSrc(capturedPreview)
     setCapturedPreview(null)
@@ -80,7 +84,7 @@ export default function Scanner() {
     try {
       const preds = await detectImage(uploadImgRef.current)
       if (uploadTokenRef.current !== token) return // a newer upload or a camera switch happened meanwhile
-      setUploadPrediction(preds[0] || null)
+      setUploadPredictions(preds)
     } finally {
       if (uploadTokenRef.current === token) setIsDetectingUpload(false)
     }
@@ -88,14 +92,14 @@ export default function Scanner() {
 
   const handleUploadImgError = () => {
     uploadTokenRef.current += 1
-    setUploadedSrc(null); setUploadPrediction(null); setIsDetectingUpload(false)
+    setUploadedSrc(null); setUploadPredictions([]); setIsDetectingUpload(false); setManualSelection(null)
     showToast('Could not load that image. Try a different file.', 'error')
     startCamera()
   }
 
   const useCameraInstead = () => {
     uploadTokenRef.current += 1
-    setUploadedSrc(null); setUploadPrediction(null); setScanResult(null); setIsDetectingUpload(false); setCapturedPreview(null)
+    setUploadedSrc(null); setUploadPredictions([]); setScanResult(null); setIsDetectingUpload(false); setCapturedPreview(null); setManualSelection(null)
     startCamera()
   }
 
@@ -111,6 +115,29 @@ export default function Scanner() {
     } catch (err) {
       showToast(err.response?.data?.error || 'Scan failed. Try again.', 'error')
     } finally { setIsScanning(false) }
+  }
+
+  // Scans every distinct detected object against the same frame, one Gemini call
+  // each, in sequence — a toast per result as they land, the last one shown in
+  // the verdict panel, the rest waiting in History.
+  const handleScanAll = async () => {
+    if (isScanning || detections.length < 2) return
+    setIsScanning(true); setScanResult(null)
+    const imageBase64 = captureFrame(uploadedSrc ? uploadImgRef.current : videoRef.current)
+    let lastResult = null
+    for (const d of detections) {
+      try {
+        const { data } = await api.post('/scan', { imageBase64, objectLabel: d.class })
+        lastResult = data
+        showToast(`${d.class}: ${data.verdict} · ${data.score}/100`, 'success')
+      } catch {
+        showToast(`Could not scan ${d.class}.`, 'error')
+      }
+    }
+    if (lastResult) setScanResult(lastResult)
+    if (navigator.vibrate) navigator.vibrate(40)
+    setIsScanning(false)
+    showToast(`Scanned ${detections.length} items — see them all in your dashboard.`, 'info')
   }
 
   const showSweep = !uploadedSrc && !capturedPreview && isReady && isModelLoaded && !scanResult && !isScanning
@@ -141,7 +168,7 @@ export default function Scanner() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <Camera videoRef={videoRef} predictions={predictions} verdict={scanResult?.verdict || null} />
+                <Camera videoRef={videoRef} predictions={livePredictions} verdict={scanResult?.verdict || null} />
               )}
 
               {capturedPreview && (
@@ -164,13 +191,17 @@ export default function Scanner() {
                     <Check size={15} /> Use this photo
                   </button>
                 </div>
-              ) : detectedObject && (
-                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/70 backdrop-blur border border-white/10">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse-dot" />
-                    <span className="font-mono text-xs text-white capitalize">{detectedObject}</span>
-                  </div>
-                  <span className="font-mono text-xs text-brand px-3 py-1.5 rounded-lg bg-black/70 backdrop-blur border border-white/10">{confidence}%</span>
+              ) : detections.length > 0 && (
+                <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center gap-2 overflow-x-auto scrollbar-none">
+                  {detections.map(d => (
+                    <button key={d.class} onClick={() => setManualSelection(d.class)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg backdrop-blur border shrink-0 cursor-pointer transition-colors ${
+                        d.class === detectedObject ? 'bg-brand/90 border-brand text-white' : 'bg-black/70 border-white/10 text-white hover:border-white/30'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${d.class === detectedObject ? 'bg-white animate-pulse-dot' : 'bg-brand'}`} />
+                      <span className="font-mono text-xs capitalize">{d.class}</span>
+                      <span className="font-mono text-[10px] opacity-70">{Math.round(d.score * 100)}%</span>
+                    </button>
+                  ))}
                 </div>
               )}
 
@@ -228,11 +259,19 @@ export default function Scanner() {
               )}
             </div>
 
-            <button onClick={handleScan} disabled={!detectedObject || isScanning || (!uploadedSrc && !isReady)} className="btn-brand w-full h-12">
-              {isScanning
-                ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Analyzing…</>
-                : <><Zap size={17} />Scan now</>}
-            </button>
+            <div className="flex gap-2.5">
+              <button onClick={handleScan} disabled={!detectedObject || isScanning || (!uploadedSrc && !isReady)} className="btn-brand flex-1 h-12">
+                {isScanning
+                  ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Analyzing…</>
+                  : <><Zap size={17} />Scan now</>}
+              </button>
+              {detections.length > 1 && (
+                <button onClick={handleScanAll} disabled={isScanning || (!uploadedSrc && !isReady)}
+                  className="btn-outline h-12 px-4 shrink-0" aria-label={`Scan all ${detections.length} detected items`}>
+                  Scan all {detections.length}
+                </button>
+              )}
+            </div>
 
             {showLockOnHint && (
               <div className="flex items-center justify-center gap-2 text-sm text-muted">
