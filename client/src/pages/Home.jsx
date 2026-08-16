@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   ArrowRight, Leaf, Utensils, ScanBarcode,
   Apple, Coffee, Laptop, Wine, BookOpen, ShoppingBag, Cpu,
-  ScanLine, ShieldCheck, Sparkles,
+  ShieldCheck, Sparkles,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, ResponsiveContainer, Cell,
@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useReveal } from '../hooks/useReveal'
 import PhoneMockup from '../components/PhoneMockup/PhoneMockup'
+import { STEPS } from '../data/steps'
 import api from '../services/api'
 
 const SCAN_ITEMS = [
@@ -19,12 +20,6 @@ const SCAN_ITEMS = [
   { icon: Laptop, label: 'Gadgets' }, { icon: Leaf, label: 'Plants' },
   { icon: Wine, label: 'Bottles' }, { icon: BookOpen, label: 'Books' },
   { icon: ShoppingBag, label: 'Products' }, { icon: Cpu, label: 'Electronics' },
-]
-
-const STEPS = [
-  { icon: ScanLine, k: '01', title: 'Point your camera', line: 'The model detects the object live, right in your browser. Nothing uploaded.' },
-  { icon: Sparkles, k: '02', title: 'Get real nutrition data', line: 'Ingredients, nutrients and impact — estimated from a dish, or read straight off a package label.' },
-  { icon: ShieldCheck, k: '03', title: 'See an honest verdict', line: 'A score from 0–100, a plain-English reason, and one useful tip.' },
 ]
 
 const CAPABILITIES = [

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { FlipHorizontal2, Zap, ScanLine, Upload, RotateCcw, Aperture, Check } from 'lucide-react'
 import Camera from '../components/Camera/Camera'
 import VerdictCard from '../components/VerdictCard/VerdictCard'
+import Onboarding from '../components/Onboarding/Onboarding'
 import { useCamera } from '../hooks/useCamera'
 import { useDetection } from '../hooks/useDetection'
 import { captureFrame } from '../utils/canvasOverlay'
@@ -117,6 +118,7 @@ export default function Scanner() {
 
   return (
     <div className="container-vw py-6 md:py-10">
+      <Onboarding />
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <span className="eyebrow">Scanner</span>
