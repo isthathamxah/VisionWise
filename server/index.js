@@ -55,6 +55,21 @@ app.use('/api/history', historyRoutes)
 // Health check (keeps Render free tier awake via uptime monitors)
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
 
+// TODO: remove — one-off diagnostic to see which Gemini models this key can actually use
+app.get('/debug-models', async (req, res) => {
+  try {
+    const key = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '').split(',')[0].trim()
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`)
+    const data = await r.json()
+    const names = (data.models || [])
+      .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+      .map(m => m.name.replace('models/', ''))
+    res.json({ names })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Catches anything passed to next(err) — notably the CORS origin check above,
 // which throws rather than calling res directly. Without this, Express's
 // default handler returns a raw 500 with an HTML stack trace instead of a
