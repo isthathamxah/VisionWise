@@ -9,6 +9,8 @@ import { ToastProvider } from './context/ToastContext'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Scanner from './pages/Scanner'
 import History from './pages/History'
 import ScanDetail from './pages/ScanDetail'
@@ -72,6 +74,8 @@ function AppRoutes() {
         <Route path="/"         element={<Shell><Home /></Shell>} />
         <Route path="/login"    element={<Shell footer={false}><Login /></Shell>} />
         <Route path="/register" element={<Shell footer={false}><Register /></Shell>} />
+        <Route path="/forgot-password" element={<Shell footer={false}><ForgotPassword /></Shell>} />
+        <Route path="/reset-password"  element={<Shell footer={false}><ResetPassword /></Shell>} />
         <Route path="/auth/callback" element={<OAuthCallback />} />
         <Route path="/scanner"  element={<Shell footer={false}><ProtectedRoute><Scanner /></ProtectedRoute></Shell>} />
         <Route path="/history"  element={<Shell><ProtectedRoute><History /></ProtectedRoute></Shell>} />

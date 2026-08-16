@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { body } from 'express-validator'
-import { register, login, refresh, googleCallback, getMe, updateProfile, changePassword, updateAvatar } from '../controllers/authController.js'
+import { register, login, refresh, googleCallback, getMe, updateProfile, changePassword, updateAvatar, forgotPassword, resetPassword } from '../controllers/authController.js'
 import protect from '../middleware/authMiddleware.js'
+import { resetLimiter } from '../middleware/rateLimiter.js'
 import '../config/passport.js'
 
 const router = Router()
@@ -35,6 +36,17 @@ router.patch('/password', protect, [
 ], changePassword)
 
 router.patch('/avatar', protect, updateAvatar)
+
+router.post('/forgot-password', resetLimiter, [
+  body('email').isEmail().normalizeEmail(),
+], forgotPassword)
+
+router.post('/reset-password', [
+  body('token').notEmpty(),
+  body('password').isLength({ min: 8, max: 64 })
+    .matches(/[A-Z]/).withMessage('Must contain uppercase')
+    .matches(/[0-9]/).withMessage('Must contain number')
+], resetPassword)
 
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
 

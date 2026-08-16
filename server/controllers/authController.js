@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { validationResult } from 'express-validator'
 import User from '../models/User.js'
+import { sendPasswordResetEmail } from '../services/emailService.js'
 
 const signTokens = (userId, email) => ({
   accessToken: jwt.sign({ userId, email }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN }),
@@ -119,5 +120,50 @@ export const changePassword = async (req, res) => {
     res.json({ message: 'Password updated' })
   } catch {
     res.status(500).json({ error: 'Server error' })
+  }
+}
+
+const GENERIC_RESET_MESSAGE = 'If that email is registered, a reset link is on its way.'
+
+export const forgotPassword = async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
+
+  const { email } = req.body
+  try {
+    const user = await User.findOne({ email })
+    // Same generic response whether or not the account exists, or is a
+    // Google-only account with no password — never reveal which via timing
+    // or response shape. Only a real local account actually gets an email.
+    if (user?.password) {
+      // The current hash rides along in the token so it doubles as a
+      // single-use check: resetting the password changes the hash, so a
+      // reused or already-actioned link fails verification on the next attempt.
+      const token = jwt.sign({ userId: user._id, pwdHash: user.password }, process.env.JWT_RESET_SECRET, { expiresIn: '30m' })
+      const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}`
+      sendPasswordResetEmail(user.email, resetUrl).catch(err => console.error('[email] reset send failed:', err.message))
+    }
+    res.json({ message: GENERIC_RESET_MESSAGE })
+  } catch {
+    res.json({ message: GENERIC_RESET_MESSAGE })
+  }
+}
+
+export const resetPassword = async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
+
+  const { token, password } = req.body
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_RESET_SECRET)
+    const user = await User.findById(decoded.userId)
+    if (!user || user.password !== decoded.pwdHash) {
+      return res.status(400).json({ error: 'This reset link is invalid or has already been used.' })
+    }
+    user.password = await bcrypt.hash(password, 12)
+    await user.save()
+    res.json({ message: 'Password updated — sign in with your new password.' })
+  } catch {
+    res.status(400).json({ error: 'This reset link is invalid or has expired.' })
   }
 }
