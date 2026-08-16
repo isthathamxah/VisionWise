@@ -1,4 +1,10 @@
 export default function GoogleButton() {
+  // Google's OAuth policy requires a redirect_uri on a domain you actually
+  // own — a shared PaaS subdomain (Render, Vercel, ...) fails that check.
+  // localhost is specially exempted, so this only works in local dev;
+  // import.meta.env.DEV is Vite's own dev-vs-build flag, already free.
+  if (!import.meta.env.DEV) return null
+
   const handleGoogle = () => { window.location.href = `${import.meta.env.VITE_API_URL}/auth/google` }
   return (
     <button onClick={handleGoogle} type="button" className="btn-outline w-full h-12">
