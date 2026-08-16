@@ -213,24 +213,26 @@ export default function Scanner() {
                 </button>
               ) : !capturedPreview && (
                 <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+                  {/* Icon-only buttons tested confusing for first-time users — matched to the
+                      already-established "Use camera" pill style: icon plus a visible label. */}
                   {isModelLoaded && (
                     <button onClick={() => fileInputRef.current?.click()}
-                      className="p-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
+                      className="flex items-center gap-1.5 h-10 pl-2.5 pr-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white text-xs font-medium cursor-pointer hover:bg-black/80 transition-colors"
                       aria-label="Upload photo">
-                      <Upload size={17} />
+                      <Upload size={15} /> Upload
                     </button>
                   )}
                   {isReady && (
                     <button onClick={handleCapture} disabled={isScanning}
-                      className="p-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1.5 h-10 pl-2.5 pr-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white text-xs font-medium cursor-pointer hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Take picture">
-                      <Aperture size={17} />
+                      <Aperture size={15} /> Capture
                     </button>
                   )}
                   <button onClick={flipCamera}
-                    className="p-3 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
-                    aria-label="Flip camera">
-                    <FlipHorizontal2 size={17} />
+                    className="flex items-center justify-center h-10 w-10 rounded-xl bg-black/60 backdrop-blur border border-white/10 text-white cursor-pointer hover:bg-black/80 transition-colors"
+                    aria-label="Flip camera" title="Flip camera">
+                    <FlipHorizontal2 size={15} />
                   </button>
                 </div>
               )}
