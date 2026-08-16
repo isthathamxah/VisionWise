@@ -110,25 +110,45 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '')
   const imagePart = { inlineData: { data: base64Data, mimeType: 'image/jpeg' } }
 
-  try {
-    const result = await model.generateContent([prompt, imagePart])
-    const text = result.response.text().trim()
-    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const parsed = JSON.parse(cleaned)
-    parsed.breakdown = Array.isArray(parsed.breakdown)
-      ? parsed.breakdown
-          .filter(b => b?.label && Number.isFinite(b.percent))
-          .slice(0, 5)
-          .map(b => ({ label: String(b.label).slice(0, 60), percent: Math.max(0, Math.min(100, Math.round(b.percent))) }))
-      : []
-    parsed.food = sanitizeFood(parsed.food)
-    return parsed
-  } catch (err) {
-    // On rate limit, use fallback so the app keeps working
-    if (err.message?.includes('429') || err.status === 429) {
-      console.log('[Gemini] Rate limited — using fallback verdict')
-      return getFallbackVerdict(objectLabel)
+  // gemini-flash-latest returns a 503 "currently experiencing high demand" from
+  // Google's side occasionally — confirmed transient (a retry moments later
+  // succeeds), so it's worth a couple of quick retries before giving up.
+  const isTransient = err => err.status === 503 || /503|high demand|Service Unavailable/i.test(err.message || '')
+  const attempts = 3
+  let lastErr
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const result = await model.generateContent([prompt, imagePart])
+      const text = result.response.text().trim()
+      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const parsed = JSON.parse(cleaned)
+      parsed.breakdown = Array.isArray(parsed.breakdown)
+        ? parsed.breakdown
+            .filter(b => b?.label && Number.isFinite(b.percent))
+            .slice(0, 5)
+            .map(b => ({ label: String(b.label).slice(0, 60), percent: Math.max(0, Math.min(100, Math.round(b.percent))) }))
+        : []
+      parsed.food = sanitizeFood(parsed.food)
+      return parsed
+    } catch (err) {
+      lastErr = err
+      // On rate limit, use fallback right away so the app keeps working
+      if (err.message?.includes('429') || err.status === 429) {
+        console.log('[Gemini] Rate limited — using fallback verdict')
+        return getFallbackVerdict(objectLabel)
+      }
+      if (isTransient(err) && i < attempts - 1) {
+        console.log(`[Gemini] Transient error (attempt ${i + 1}/${attempts}), retrying:`, err.message)
+        await new Promise(r => setTimeout(r, 1000 * (i + 1))) // 1s, then 2s
+        continue
+      }
+      break
     }
-    throw err
   }
+  // Retries exhausted — a rule-based verdict beats a hard failure either way
+  if (isTransient(lastErr)) {
+    console.log('[Gemini] Still unavailable after retries — using fallback verdict')
+    return getFallbackVerdict(objectLabel)
+  }
+  throw lastErr
 }
