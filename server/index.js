@@ -21,6 +21,11 @@ app.set('trust proxy', 1)
 app.use(helmet())
 
 const isDev = process.env.NODE_ENV !== 'production'
+// A trailing slash or stray whitespace is an easy thing to pick up pasting an
+// env var into a host's dashboard — normalize both sides before comparing
+// rather than fail on a difference that doesn't actually matter.
+const normalizeOrigin = url => url?.trim().replace(/\/+$/, '')
+const CLIENT_URL = normalizeOrigin(process.env.CLIENT_URL)
 app.use(cors({
   origin: (origin, cb) => {
     // Allow same-origin / tools with no Origin header (curl, health checks)
@@ -31,7 +36,7 @@ app.use(cors({
     // random per run, so match the domain rather than one fixed hostname)
     if (isDev && /^https:\/\/[\w-]+\.ngrok-free\.(dev|app)$/.test(origin)) return cb(null, true)
     // Otherwise only the configured client URL
-    if (origin === process.env.CLIENT_URL) return cb(null, true)
+    if (normalizeOrigin(origin) === CLIENT_URL) return cb(null, true)
     return cb(new Error('Not allowed by CORS'))
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
@@ -64,7 +69,10 @@ app.use((err, req, res, next) => {
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('MongoDB connected')
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`)
+      console.log(`Allowed client origin: ${CLIENT_URL || '(none set)'}`)
+    })
   })
   .catch(err => {
     console.error('MongoDB connection error:', err)
