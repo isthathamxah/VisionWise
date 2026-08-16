@@ -184,7 +184,7 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
   // masquerading as normal fallback usage forever.
   if (isQuotaExhausted(lastErr) || isTransient(lastErr)) {
     console.log('[Gemini] All API keys unavailable — using fallback verdict')
-    return { ...getFallbackVerdict(objectLabel), debugLastErr: lastErr?.message, debugKeyCount: models.length } // TODO: remove once diagnosed
+    return getFallbackVerdict(objectLabel)
   }
   throw lastErr
 }
