@@ -37,8 +37,6 @@ export default {
       },
       animation: {
         'reveal':    'reveal 0.7s cubic-bezier(0.22,1,0.36,1) forwards',
-        'float':     'float 6s ease-in-out infinite',
-        'float-slow':'float 9s ease-in-out infinite',
         'scan':      'scan 2.6s ease-in-out infinite',
         'marquee':   'marquee 26s linear infinite',
         'pulse-dot': 'pulseDot 2s ease-in-out infinite',
@@ -50,7 +48,6 @@ export default {
       keyframes: {
         reveal: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
         pageIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-        float:  { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-14px)' } },
         scan:   { '0%': { top: '6%', opacity: '0' }, '12%': { opacity: '1' }, '88%': { opacity: '1' }, '100%': { top: '92%', opacity: '0' } },
         marquee:{ '0%': { transform: 'translateX(0)' }, '100%': { transform: 'translateX(-50%)' } },
         pulseDot:{ '0%,100%': { opacity: '1' }, '50%': { opacity: '0.4' } },

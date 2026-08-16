@@ -72,15 +72,19 @@ export default function Home() {
         <div className="container-vw pt-8 pb-10 md:pt-24 md:pb-24">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
 
-            {/* Phone — shown first on mobile, right-aligned column on desktop */}
-            <div className="order-1 lg:order-2 animate-float lg:justify-self-end">
+            {/* Phone — shown first on mobile, right-aligned column on desktop.
+                Static, not floating — the screen content already animates
+                internally (cycling scenes, pulse rings), so the device
+                itself doesn't need to drift too; a bobbing phone read more
+                like a SaaS marketing hero than an app screen. */}
+            <div className="order-1 lg:order-2 lg:justify-self-end">
               <PhoneMockup />
             </div>
 
             {/* Copy */}
             <div className="order-2 lg:order-1 animate-reveal text-center lg:text-left">
               <span className="chip mb-5 mx-auto lg:mx-0">
-                <Sparkles size={12} className="text-brand" /> AI-powered nutrition scanner
+                <Sparkles size={12} className="text-brand" /> AI-powered object scanner
               </span>
               <h1 className="font-display font-extrabold tracking-tight text-text leading-[1.05] text-balance"
                 style={{ fontSize: 'clamp(2.25rem, 7vw, 4rem)' }}>
