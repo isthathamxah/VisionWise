@@ -54,6 +54,7 @@ export function sanitizeFood(food) {
     isFood: true,
     dishType,
     source: dishType === 'packaged' && food.source === 'label' ? 'label' : 'estimated',
+    productName: typeof food.productName === 'string' ? food.productName.slice(0, 150) : '',
     servingNote: typeof food.servingNote === 'string' ? food.servingNote.slice(0, 120) : '',
     unclear: food.unclear === true,
     nutrients: [],
@@ -104,6 +105,10 @@ STEP 2 — if isFood is false: set the top-level "food" key to null and instead 
 
 STEP 3 — if isFood is true: set "breakdown" to an empty array (the nutrition data below covers that role instead) and fill in "food": dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise dishType "dish" and source "estimated". Never invent numbers: if the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Set each nutrient's "direction" to "limit" (something people should generally moderate in large amounts, e.g. sugar, sodium, saturated fat), "beneficial" (generally good in reasonable amounts, e.g. fiber, protein, vitamins), or "neutral" (neither clearly applies) — this drives how it's color-coded, separately from how much of it is present. Keep each ingredient explanation to one short sentence.
 
+For "productName": if it's a packaged product, read the actual printed brand and product name off the label (e.g. "Heinz Tomato Ketchup") — transcribe what's printed, don't paraphrase it. If it's a home-cooked dish or raw ingredients with no label, give a short descriptive name instead (e.g. "Grilled chicken salad", "Baking ingredients: eggs, flour, butter"). Never leave this blank when isFood is true.
+
+For a packaged product specifically: when a Nutrition Facts panel is visible and legible, read its printed numbers exactly as printed (calories, fat, carbohydrates, protein, and whatever else is listed) rather than estimating — estimating is only for when there's no printed panel to read.
+
 The photo might show a single prepared dish, OR several separate raw ingredients/items grouped together (e.g. ingredients laid out for a recipe, a flat-lay of groceries) — these need different treatment. For "ingredients": if you can read a printed ingredient list (source "label"), transcribe and explain EVERY ingredient listed, in the order printed — do not summarize, group, or stop early just because the list is long; up to 25 is fine. If it's one prepared dish with no label, list its main identifiable components. If it's multiple separate items shown together, list EACH distinct item individually (e.g. eggs, flour, butter, milk — not just whichever container held the most obvious one) rather than collapsing them into a single generic entry or fixating on a bowl/plate/packaging over the actual food in it.
 
 Respond with ONLY valid JSON (no markdown, no extra text), matching ONE of these two shapes exactly depending on your Step 1 decision:
@@ -112,7 +117,7 @@ Non-food shape ("food" is literally null):
 {"verdict": "...", "score": <0-100>, "reason": "...", "tips": ["...", "...", "..."], "breakdown": [{"label": "...", "percent": <int, sums to 100>}], "food": null}
 
 Food shape ("breakdown" is empty, "food" is fully filled in):
-{"verdict": "...", "score": <0-100>, "reason": "...", "tips": ["...", "...", "..."], "breakdown": [], "food": {"isFood": true, "dishType": "dish" or "packaged", "source": "estimated" or "label", "servingNote": "<e.g. 'Estimated for 1 plate/serving'>", "unclear": <true or false>, "nutrients": [{"label": "Calories", "amount": <number>, "unit": "kcal", "percentDV": <integer>, "impact": "Low" or "Moderate" or "High", "direction": "limit" or "beneficial" or "neutral", "note": "<one sentence>"}], "ingredients": [{"name": "...", "whatItIs": "<one sentence>", "whyUsed": "<one sentence>", "effect": "<one sentence>", "concern": "Low" or "Moderate" or "High" or null}]}}
+{"verdict": "...", "score": <0-100>, "reason": "...", "tips": ["...", "...", "..."], "breakdown": [], "food": {"isFood": true, "dishType": "dish" or "packaged", "source": "estimated" or "label", "productName": "<transcribed brand/product name, or a short descriptive name if unlabeled>", "servingNote": "<e.g. 'Estimated for 1 plate/serving'>", "unclear": <true or false>, "nutrients": [{"label": "Calories", "amount": <number>, "unit": "kcal", "percentDV": <integer>, "impact": "Low" or "Moderate" or "High", "direction": "limit" or "beneficial" or "neutral", "note": "<one sentence>"}], "ingredients": [{"name": "...", "whatItIs": "<one sentence>", "whyUsed": "<one sentence>", "effect": "<one sentence>", "concern": "Low" or "Moderate" or "High" or null}]}}
 
 Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
 

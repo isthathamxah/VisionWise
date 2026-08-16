@@ -46,6 +46,7 @@ const scanLogSchema = new mongoose.Schema({
       isFood: Boolean,
       dishType: String,
       source: String,
+      productName: String,
       servingNote: String,
       unclear: Boolean,
       nutrients: [{ label: String, amount: Number, unit: String, percentDV: Number, impact: String, direction: String, note: String, _id: false }],

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Share2, Wifi, Sparkles, Tag } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Share2, WifiOff, Sparkles, Tag } from 'lucide-react'
 import BreakdownChart from '../InfographicChart/BreakdownChart'
 import NutritionPanel from '../InfographicChart/NutritionPanel'
 import IngredientInfographic from '../InfographicChart/IngredientInfographic'
@@ -49,16 +49,31 @@ export default function VerdictCard({ result, onScanAgain, actionLabel = 'Scan a
 
   return (
     <div className={`card p-6 animate-reveal border ${c.soft}`}>
-      {isFood ? (
-        // Nutrition is the primary content for a food scan — the headline verdict stays
-        // visible but compact instead of competing with it for attention.
-        <div className="flex items-center gap-2 mb-4">
-          <Icon size={18} className={c.text} strokeWidth={2} />
-          <span className={`font-display font-bold text-base ${c.text}`}>{result.verdict}</span>
-          <span className="font-mono text-xs text-faint" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            · {score}/100 overall{dateLabel && ` · ${dateLabel}`}
-          </span>
+      {/* Shown first and impossible to miss — a rule-based guess (used only when the AI
+          couldn't be reached) must never look or feel like a real analysis. */}
+      {isFallback && (
+        <div className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 mb-4 bg-neutral/10 border border-neutral/25">
+          <WifiOff size={16} className="text-neutral shrink-0 mt-0.5" />
+          <p className="text-sm text-neutral leading-relaxed">
+            <span className="font-semibold">Couldn't reach the AI just now.</span> This is a rough, rule-based guess, not a real analysis — try scanning again in a moment.
+          </p>
         </div>
+      )}
+      {isFood ? (
+        <>
+          {result.food.productName && (
+            <p className="font-display font-bold text-lg text-text mb-1.5">{result.food.productName}</p>
+          )}
+          {/* Nutrition is the primary content for a food scan — the headline verdict stays
+              visible but compact instead of competing with it for attention. */}
+          <div className="flex items-center gap-2 mb-4">
+            <Icon size={18} className={c.text} strokeWidth={2} />
+            <span className={`font-display font-bold text-base ${c.text}`}>{result.verdict}</span>
+            <span className="font-mono text-xs text-faint" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              · {score}/100 overall{dateLabel && ` · ${dateLabel}`}
+            </span>
+          </div>
+        </>
       ) : (
         <>
           <div className="flex items-center justify-between mb-4">
@@ -112,13 +127,6 @@ export default function VerdictCard({ result, onScanAgain, actionLabel = 'Scan a
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {isFallback && (
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-4 bg-surface2 border border-border">
-          <Wifi size={13} className="text-faint shrink-0" />
-          <p className="text-xs text-muted">Rule-based reading — full AI analysis resumes when the model is available.</p>
         </div>
       )}
 
