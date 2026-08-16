@@ -1,7 +1,7 @@
 // Color reflects whether more of this nutrient is something to watch (limit) or welcome
 // (beneficial) — not just how much is present. A "Moderate" amount of fiber and a "Moderate"
 // amount of sugar mean opposite things, so they shouldn't share a color.
-function nutrientStyle(direction, impact) {
+export function nutrientStyle(direction, impact) {
   if (direction === 'beneficial') {
     if (impact === 'Moderate' || impact === 'High') return { text: 'text-good', bar: 'rgb(var(--good))', chip: 'bg-good/10 border-good/25' }
   }
