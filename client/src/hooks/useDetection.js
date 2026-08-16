@@ -15,25 +15,33 @@ export function useDetection(videoRef, isVideoReady) {
 
   useEffect(() => {
     mountedRef.current = true
-    cocoSsd.load({ base: 'lite_mobilenet_v2' })
+    const litePromise = cocoSsd.load({ base: 'lite_mobilenet_v2' })
       .then(model => {
-        if (!mountedRef.current) return
+        if (!mountedRef.current) return null
         modelRef.current = model
         setIsModelLoaded(true)
+        return model
       })
       .catch(err => {
         console.error('[detection] model failed to load:', err)
         if (mountedRef.current) showToast('Could not load the detection model. Try reloading the page.', 'error')
+        return null
       })
-    // Loaded in parallel, not awaited here. A one-shot scan of a static photo has no
-    // 30fps constraint, so it's worth the extra accuracy — confirmed empirically: the
-    // lite backbone misses real objects (e.g. a car at 0.37 confidence, just under the
-    // 0.5 cutoff) that the full backbone catches (0.61). The live loop above keeps the
-    // fast backbone so real-time camera detection isn't slowed down.
-    fullModelPromiseRef.current = cocoSsd.load({ base: 'mobilenet_v2' }).catch(err => {
-      console.error('[detection] full-accuracy model failed to load, falling back to the fast one:', err)
-      return null
-    })
+    // A one-shot scan of a static photo has no 30fps constraint, so the extra
+    // accuracy is worth it — confirmed empirically: the lite backbone misses real
+    // objects (e.g. a car at 0.37 confidence, just under the 0.5 cutoff) that the
+    // full backbone catches (0.61). But started in parallel with the lite model,
+    // both downloads compete for the same connection — on mobile data that
+    // measurably delayed the lite model landing, which is what unlocks the whole
+    // scanner UI (isModelLoaded gates the Upload button and the live loop).
+    // Chaining after litePromise keeps the fast path fast; detectImage() already
+    // awaits this promise, so upload/capture just wait a little longer the first time.
+    fullModelPromiseRef.current = litePromise.then(() =>
+      cocoSsd.load({ base: 'mobilenet_v2' }).catch(err => {
+        console.error('[detection] full-accuracy model failed to load, falling back to the fast one:', err)
+        return null
+      })
+    )
     return () => {
       mountedRef.current = false
       cancelAnimationFrame(rafRef.current)
