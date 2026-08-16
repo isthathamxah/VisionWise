@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sun, Moon, LogOut, Target, TrendingUp, Pencil, Check, X, Eye, EyeOff } from 'lucide-react'
+import { Sun, Moon, LogOut, Target, TrendingUp, Pencil, Check, X, Eye, EyeOff, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
@@ -12,6 +12,65 @@ const pwRules = [
   { label: 'One uppercase letter', test: v => /[A-Z]/.test(v) },
   { label: 'One number', test: v => /[0-9]/.test(v) },
 ]
+
+// Crops to a centered square and downscales before upload — keeps the
+// stored data URL small since it's inlined on the user document (no S3).
+function resizeToAvatar(file, size = 256, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    img.onload = () => {
+      const side = Math.min(img.width, img.height)
+      const canvas = document.createElement('canvas')
+      canvas.width = size; canvas.height = size
+      canvas.getContext('2d').drawImage(
+        img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size
+      )
+      URL.revokeObjectURL(objectUrl)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Could not read that image.')) }
+    img.src = objectUrl
+  })
+}
+
+function AvatarUpload({ user, onSaved }) {
+  const showToast = useToast()
+  const fileRef = useRef(null)
+  const [uploading, setUploading] = useState(false)
+
+  const onPick = async e => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploading(true)
+    try {
+      const avatar = await resizeToAvatar(file)
+      const { data } = await api.patch('/auth/avatar', { avatar })
+      onSaved(data)
+      showToast('Photo updated', 'success')
+    } catch (err) {
+      showToast(err.response ? getApiError(err, 'Could not update your photo.') : err.message, 'error')
+    } finally { setUploading(false) }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      {user?.avatar ? (
+        <img src={user.avatar} alt="" className="w-14 h-14 rounded-full object-cover" />
+      ) : (
+        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-brandSoft text-brand font-display font-bold text-xl">
+          {user?.name?.[0]?.toUpperCase() || 'U'}
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onPick} hidden />
+      <button onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="Change photo"
+        className="absolute -bottom-1 -right-1 flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white border-2 border-surface cursor-pointer disabled:opacity-50">
+        <Camera size={11} />
+      </button>
+    </div>
+  )
+}
 
 function EditableName({ name, onSaved }) {
   const showToast = useToast()
@@ -157,13 +216,7 @@ export default function Account() {
 
       {/* Profile card */}
       <div className="card p-6 flex items-center gap-4 mb-6">
-        {user?.avatar ? (
-          <img src={user.avatar} alt="" className="w-14 h-14 rounded-full object-cover shrink-0" />
-        ) : (
-          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-brandSoft text-brand font-display font-bold text-xl shrink-0">
-            {user?.name?.[0]?.toUpperCase() || 'U'}
-          </div>
-        )}
+        <AvatarUpload user={user} onSaved={updateUser} />
         <div className="min-w-0 flex-1">
           <EditableName name={user?.name} onSaved={updateUser} />
           <p className="text-sm text-muted truncate">{user?.email}</p>

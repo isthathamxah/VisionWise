@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import passport from 'passport'
 import { body } from 'express-validator'
-import { register, login, refresh, googleCallback, getMe, updateProfile, changePassword } from '../controllers/authController.js'
+import { register, login, refresh, googleCallback, getMe, updateProfile, changePassword, updateAvatar } from '../controllers/authController.js'
 import protect from '../middleware/authMiddleware.js'
 import '../config/passport.js'
 
@@ -33,6 +33,8 @@ router.patch('/password', protect, [
     .matches(/[A-Z]/).withMessage('Must contain uppercase')
     .matches(/[0-9]/).withMessage('Must contain number')
 ], changePassword)
+
+router.patch('/avatar', protect, updateAvatar)
 
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
 

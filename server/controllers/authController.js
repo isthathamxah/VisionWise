@@ -8,6 +8,12 @@ const signTokens = (userId, email) => ({
   refreshToken: jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN })
 })
 
+const userShape = user => ({ _id: user._id, name: user.name, email: user.email, avatar: user.avatar, hasPassword: !user.googleId })
+
+// Avatars are stored inline as a data URL (no S3/Cloudinary) — the client
+// resizes to a small square before sending, this is just a safety cap.
+const MAX_AVATAR_LENGTH = 300_000
+
 export const register = async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
@@ -20,7 +26,7 @@ export const register = async (req, res) => {
     const hashed = await bcrypt.hash(password, 12)
     const user = await User.create({ name, email, password: hashed })
     const { accessToken, refreshToken } = signTokens(user._id, user.email)
-    res.status(201).json({ accessToken, refreshToken, user: { _id: user._id, name: user.name, email: user.email, avatar: null, hasPassword: true } })
+    res.status(201).json({ accessToken, refreshToken, user: userShape(user) })
   } catch (err) {
     res.status(500).json({ error: 'Server error' })
   }
@@ -39,7 +45,7 @@ export const login = async (req, res) => {
     if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' })
 
     const { accessToken, refreshToken } = signTokens(user._id, user.email)
-    res.json({ accessToken, refreshToken, user: { _id: user._id, name: user.name, email: user.email, avatar: user.avatar, hasPassword: !user.googleId } })
+    res.json({ accessToken, refreshToken, user: userShape(user) })
   } catch {
     res.status(500).json({ error: 'Server error' })
   }
@@ -65,7 +71,7 @@ export const googleCallback = (req, res) => {
 }
 
 export const getMe = async (req, res) => {
-  res.json({ _id: req.user._id, name: req.user.name, email: req.user.email, avatar: req.user.avatar, hasPassword: !req.user.googleId })
+  res.json(userShape(req.user))
 }
 
 export const updateProfile = async (req, res) => {
@@ -74,7 +80,23 @@ export const updateProfile = async (req, res) => {
 
   try {
     const user = await User.findByIdAndUpdate(req.user._id, { name: req.body.name }, { new: true })
-    res.json({ _id: user._id, name: user.name, email: user.email, avatar: user.avatar, hasPassword: !user.googleId })
+    res.json(userShape(user))
+  } catch {
+    res.status(500).json({ error: 'Server error' })
+  }
+}
+
+export const updateAvatar = async (req, res) => {
+  const { avatar } = req.body
+  if (typeof avatar !== 'string' || !/^data:image\/(png|jpeg|webp);base64,/.test(avatar)) {
+    return res.status(400).json({ error: 'Invalid image.' })
+  }
+  if (avatar.length > MAX_AVATAR_LENGTH) {
+    return res.status(400).json({ error: 'Image is too large.' })
+  }
+  try {
+    const user = await User.findByIdAndUpdate(req.user._id, { avatar }, { new: true })
+    res.json(userShape(user))
   } catch {
     res.status(500).json({ error: 'Server error' })
   }

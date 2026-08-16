@@ -77,8 +77,14 @@ export default function Navbar() {
           {isAuthenticated ? (
             <>
               <button onClick={handleLogout} className="btn-ghost h-10 px-4">Sign out</button>
-              <Link to="/account" aria-label="Account" className="flex items-center justify-center w-9 h-9 rounded-full bg-brandSoft text-brand font-display font-bold text-sm hover:opacity-80 transition-opacity">
-                {user?.name?.[0]?.toUpperCase() || 'U'}
+              <Link to="/account" aria-label="Account" className="shrink-0 hover:opacity-80 transition-opacity">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="" className="w-9 h-9 rounded-full object-cover" />
+                ) : (
+                  <span className="flex items-center justify-center w-9 h-9 rounded-full bg-brandSoft text-brand font-display font-bold text-sm">
+                    {user?.name?.[0]?.toUpperCase() || 'U'}
+                  </span>
+                )}
               </Link>
             </>
           ) : (
