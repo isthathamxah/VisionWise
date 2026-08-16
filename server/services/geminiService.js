@@ -10,7 +10,12 @@ const keys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '')
   .map(k => k.trim())
   .filter(Boolean)
 
-const models = keys.map(key => new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-flash-latest' }))
+// Pinned to a stable, named model rather than the "-latest" alias. Confirmed
+// live: "gemini-flash-latest" currently floats to gemini-3.7-flash, whose free
+// tier allows only 20 requests/day/project — gemini-2.5-flash's free tier is
+// far more generous, and being a named (not floating) model means the quota
+// won't silently change again on Google's next model rollout.
+const models = keys.map(key => new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-2.5-flash' }))
 
 // Rules used when Gemini is rate-limited
 const fallbackRules = {
@@ -124,9 +129,9 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '')
   const imagePart = { inlineData: { data: base64Data, mimeType: 'image/jpeg' } }
 
-  // gemini-flash-latest returns a 503 "currently experiencing high demand" from
-  // Google's side occasionally — confirmed transient (a retry moments later
-  // succeeds), so it's worth a couple of quick retries before giving up. The
+  // Gemini returns a 503 "currently experiencing high demand" from Google's
+  // side occasionally — confirmed transient (a retry moments later succeeds),
+  // so it's worth a couple of quick retries before giving up. The
   // SDK has no default timeout, so a bad attempt can hang indefinitely instead
   // of failing fast (confirmed live: one request hung 90+ seconds with zero
   // response) — an explicit per-attempt timeout, via the SDK's built-in
