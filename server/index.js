@@ -26,7 +26,7 @@ app.use(cors({
     if (origin === process.env.CLIENT_URL) return cb(null, true)
     return cb(new Error('Not allowed by CORS'))
   },
-  methods: ['GET', 'POST', 'DELETE'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }))

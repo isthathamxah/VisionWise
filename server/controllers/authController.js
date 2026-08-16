@@ -20,7 +20,7 @@ export const register = async (req, res) => {
     const hashed = await bcrypt.hash(password, 12)
     const user = await User.create({ name, email, password: hashed })
     const { accessToken, refreshToken } = signTokens(user._id, user.email)
-    res.status(201).json({ accessToken, refreshToken, user: { _id: user._id, name: user.name, email: user.email } })
+    res.status(201).json({ accessToken, refreshToken, user: { _id: user._id, name: user.name, email: user.email, avatar: null, hasPassword: true } })
   } catch (err) {
     res.status(500).json({ error: 'Server error' })
   }
@@ -39,7 +39,7 @@ export const login = async (req, res) => {
     if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' })
 
     const { accessToken, refreshToken } = signTokens(user._id, user.email)
-    res.json({ accessToken, refreshToken, user: { _id: user._id, name: user.name, email: user.email, avatar: user.avatar } })
+    res.json({ accessToken, refreshToken, user: { _id: user._id, name: user.name, email: user.email, avatar: user.avatar, hasPassword: !user.googleId } })
   } catch {
     res.status(500).json({ error: 'Server error' })
   }
@@ -65,5 +65,37 @@ export const googleCallback = (req, res) => {
 }
 
 export const getMe = async (req, res) => {
-  res.json({ _id: req.user._id, name: req.user.name, email: req.user.email, avatar: req.user.avatar })
+  res.json({ _id: req.user._id, name: req.user.name, email: req.user.email, avatar: req.user.avatar, hasPassword: !req.user.googleId })
+}
+
+export const updateProfile = async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
+
+  try {
+    const user = await User.findByIdAndUpdate(req.user._id, { name: req.body.name }, { new: true })
+    res.json({ _id: user._id, name: user.name, email: user.email, avatar: user.avatar, hasPassword: !user.googleId })
+  } catch {
+    res.status(500).json({ error: 'Server error' })
+  }
+}
+
+export const changePassword = async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
+
+  const { currentPassword, newPassword } = req.body
+  try {
+    const user = await User.findById(req.user._id)
+    if (!user.password) return res.status(400).json({ error: 'This account signs in with Google — there’s no password to change.' })
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password)
+    if (!isMatch) return res.status(401).json({ error: 'Current password is incorrect.' })
+
+    user.password = await bcrypt.hash(newPassword, 12)
+    await user.save()
+    res.json({ message: 'Password updated' })
+  } catch {
+    res.status(500).json({ error: 'Server error' })
+  }
 }

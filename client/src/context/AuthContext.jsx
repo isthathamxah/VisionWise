@@ -33,8 +33,18 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // Merges a partial profile update (e.g. after PATCH /auth/profile) into the
+  // stored user, without touching tokens.
+  const updateUser = patch => {
+    setUser(u => {
+      const next = { ...u, ...patch }
+      localStorage.setItem('vw_user', JSON.stringify(next))
+      return next
+    })
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, isAuthenticated: !!token, loading }}>
       {children}
     </AuthContext.Provider>
   )
