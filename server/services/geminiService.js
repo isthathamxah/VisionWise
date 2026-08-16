@@ -112,13 +112,19 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
 
   // gemini-flash-latest returns a 503 "currently experiencing high demand" from
   // Google's side occasionally — confirmed transient (a retry moments later
-  // succeeds), so it's worth a couple of quick retries before giving up.
-  const isTransient = err => err.status === 503 || /503|high demand|Service Unavailable/i.test(err.message || '')
+  // succeeds), so it's worth a couple of quick retries before giving up. The
+  // SDK has no default timeout, so a bad attempt can hang indefinitely instead
+  // of failing fast (confirmed live: one request hung 90+ seconds with zero
+  // response) — an explicit per-attempt timeout, via the SDK's built-in
+  // AbortController support, is what actually makes the retry loop useful.
+  const isTransient = err =>
+    err.status === 503 || err.name === 'AbortError' ||
+    /503|high demand|Service Unavailable|abort|timeout/i.test(err.message || '')
   const attempts = 3
   let lastErr
   for (let i = 0; i < attempts; i++) {
     try {
-      const result = await model.generateContent([prompt, imagePart])
+      const result = await model.generateContent([prompt, imagePart], { timeout: 15000 })
       const text = result.response.text().trim()
       const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       const parsed = JSON.parse(cleaned)
