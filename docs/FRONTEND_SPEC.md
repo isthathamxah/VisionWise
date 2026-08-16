@@ -1,8 +1,8 @@
 # Frontend Specification Document
-## VisionWise — AI-Powered Contextual Object Scanner & Recommender
-**Version:** 1.0  
-**Author:** Muhammad Taha (4618-FOC/BSCS/F22)  
-**Date:** June 2026
+## VisionWise — AI-Powered Nutrition & Food Scanner
+**Version:** 2.0 (rewritten to match the shipped mobile-first UI — see PRD.md §0)
+**Author:** Muhammad Taha (4618-FOC/BSCS/F22)
+**Date:** August 2026
 
 ---
 
@@ -13,314 +13,266 @@
 | React | 18 | UI framework |
 | Vite | 5 | Build tool & dev server |
 | React Router DOM | 6 | Client-side routing |
-| Tailwind CSS | 3 | Styling |
+| Tailwind CSS | 3 | Styling, CSS-variable-based theming (light/dark) |
 | Recharts | 2 | Analytics charts |
 | Axios | 1 | HTTP client |
 | TensorFlow.js | 4 | In-browser object detection |
 | @tensorflow-models/coco-ssd | 2 | Pre-trained detection model |
+| Vitest + Testing Library | latest | Client-side unit/component tests |
+| lucide-react | — | Icon set |
+| Fonts | — | Plus Jakarta Sans (display), Inter (body), IBM Plex Mono (mono/labels) — all Google Fonts, free |
+
+No animation or carousel library — page transitions, swipe gestures, and
+the landing page's swipe-carousels are hand-built on CSS transforms/
+transitions and the Pointer/Touch Events APIs.
 
 ---
 
 ## 2. Page Structure & Routes
 
-| Route | Page Component | Auth Required |
-|-------|---------------|--------------|
-| `/` | `Home.jsx` | No |
-| `/login` | `Login.jsx` | No (redirect to /scanner if already logged in) |
-| `/register` | `Register.jsx` | No |
-| `/scanner` | `Scanner.jsx` | Yes |
-| `/history` | `History.jsx` | Yes |
-| `*` | 404 inline | No |
+| Route | Page Component | Auth Required | Notes |
+|-------|---------------|--------------|-------|
+| `/` | `Home.jsx` | No | Landing page |
+| `/login` | `Login.jsx` | No (redirects to /scanner if already logged in) | |
+| `/register` | `Register.jsx` | No | |
+| `/auth/callback` | `OAuthCallback` (inline in `App.jsx`) | No | Google OAuth redirect target |
+| `/scanner` | `Scanner.jsx` | Yes | Shows a one-time onboarding sheet on first visit |
+| `/history` | `History.jsx` | Yes | Searchable, verdict-filterable, paginated |
+| `/history/:id` | `ScanDetail.jsx` | Yes | Real, shareable per-scan page (not a modal) |
+| `/account` | `Account.jsx` | Yes | Profile, avatar, password, theme, sign out |
+| `*` | 404 inline (in `App.jsx`) | No | |
+
+Every route renders inside a shared `Shell` (in `App.jsx`): `Navbar` at
+top, `Footer` on content pages, `BottomNav` at bottom for signed-in users
+on mobile only. `Shell`'s `<main>` remounts on `key={pathname}` to replay
+a fade/slide-in animation on every navigation.
 
 ---
 
-## 3. Page Wireframes
+## 3. Navigation Chrome
 
-### 3.1 Home Page (`/`)
-```
-┌────────────────────────────────────────────────────┐
-│  NAVBAR: [VisionWise logo]            [Login] [Register] │
-├────────────────────────────────────────────────────┤
-│                                                    │
-│         VisionWise                                 │
-│   Scan. Understand. Act.                           │
-│                                                    │
-│   [  Start Scanning  ]   ← CTA button             │
-│                                                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌───────────┐  │
-│  │  🥗 Health  │  │  ♻️ Eco     │  │  💼 Work  │  │
-│  │  Scan food  │  │  Go green   │  │  Stay focused│
-│  └─────────────┘  └─────────────┘  └───────────┘  │
-│                                                    │
-│  ┌─────────────────────────────────────────────┐  │
-│  │  How it works:                              │  │
-│  │  1. Choose a context                        │  │
-│  │  2. Point your camera                       │  │
-│  │  3. Get your verdict                        │  │
-│  └─────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────┘
-```
+Two different navigation patterns depending on auth state and viewport:
 
-### 3.2 Scanner Page (`/scanner`)
-```
-┌────────────────────────────────────────────────────┐
-│  NAVBAR: [← Back] VisionWise          [Profile]   │
-├────────────────────────────────────────────────────┤
-│                                                    │
-│  Context: [Health ▼] [Eco] [Productivity] [Finance]│
-│                         ← pill selector            │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │                                              │  │
-│  │         CAMERA FEED                         │  │
-│  │      (live video + canvas overlay)          │  │
-│  │                                              │  │
-│  │   [  bottle  ]  ← floating detection chip   │  │
-│  │                                              │  │
-│  │  ┌────────────────────────────────────────┐ │  │
-│  │  │   GREEN glow around bottle object      │ │  │
-│  │  └────────────────────────────────────────┘ │  │
-│  └──────────────────────────────────────────────┘  │
-│                                                    │
-│              [  🔍 Scan Now  ]                     │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │  VerdictCard (appears after scan)            │  │
-│  │                                              │  │
-│  │  ✅ GOOD    Score: 82/100                   │  │
-│  │  "Stainless steel water bottle reduces       │  │
-│  │   single-use plastic waste significantly."  │  │
-│  │                                              │  │
-│  │  Tips:                                       │  │
-│  │  • Clean weekly to prevent mold             │  │
-│  │  • BPA-free materials are safer             │  │
-│  │  • Choose 500ml for daily carry             │  │
-│  │                                              │  │
-│  │  [📊 View in Chart]  [🔄 Scan Again]        │  │
-│  └──────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────┘
-```
-
-### 3.3 History Page (`/history`)
-```
-┌────────────────────────────────────────────────────┐
-│  NAVBAR: [VisionWise]           [Scanner] [Profile]│
-├────────────────────────────────────────────────────┤
-│                                                    │
-│  Scan History          Filter: [All ▼] [Context▼] │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │ [♻️] bottle   Eco    ✅ Good  82   Jun 22   🗑│  │
-│  ├──────────────────────────────────────────────┤  │
-│  │ [🥗] chips    Health ❌ Bad   23   Jun 21   🗑│  │
-│  ├──────────────────────────────────────────────┤  │
-│  │ [💼] phone   Work   ❌ Bad   18   Jun 21   🗑│  │
-│  └──────────────────────────────────────────────┘  │
-│                                                    │
-│  [← Prev]  Page 1 of 3  [Next →]                  │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │  Weekly Score: 47/100                        │  │
-│  │  [Bar chart: scans per day for last 7 days]  │  │
-│  └──────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────┘
-```
-
-### 3.4 Login Page (`/login`)
-```
-┌────────────────────────────────────────────────────┐
-│                  VisionWise                        │
-│                                                    │
-│           ┌──────────────────────────┐             │
-│           │  Email                   │             │
-│           │  Password                │             │
-│           │  [     Login     ]       │             │
-│           │                          │             │
-│           │  ── or ──                │             │
-│           │  [G Continue with Google]│             │
-│           │                          │             │
-│           │  Don't have an account?  │             │
-│           │  [Register here]         │             │
-│           └──────────────────────────┘             │
-└────────────────────────────────────────────────────┘
-```
+- **Logged out, any width:** top `Navbar` with a hamburger menu on mobile.
+- **Logged in, desktop (`md:` and up):** top `Navbar` shows Scanner /
+  Dashboard / Account links plus a theme toggle, sign-out button, and an
+  avatar (photo if set, initial otherwise) linking to `/account`.
+- **Logged in, mobile:** top `Navbar` collapses to just the logo —
+  `BottomNav` (Dashboard / Scanner / Account tabs, Scanner elevated in the
+  center) is the sole navigation, so nothing is duplicated between the two.
 
 ---
 
-## 4. Component Hierarchy
+## 4. Page Layout Notes
+
+### 4.1 Home (`/`)
+Phone-mockup-first hero (the mockup leads on mobile, sits beside the copy
+on desktop) — visual first, minimal copy, one CTA. Below that: a
+horizontally-scrolling "what you can scan" chip marquee, two swipe-
+carousels ("How it works", "What you get" — scroll-snap on mobile, a
+plain 3-column grid at `md:` and up), a single dashboard-preview card, a
+plain CTA, and a one-line footer (logo + copyright — no link-column
+sitemap).
+
+### 4.2 Scanner (`/scanner`)
+Camera feed (or an uploaded/captured photo) with a live detection
+overlay, an upload/take-picture/flip-camera button cluster, a "Scan now"
+button, and the `VerdictCard` beside it (below it on mobile). First visit
+shows a one-time onboarding `BottomSheet` covering the three steps
+(reads from `data/steps.js`, the same content Home's "How it works"
+section uses); dismissing it sets a `localStorage` flag so it never
+shows again.
+
+### 4.3 History (`/history`)
+Three stat cards (avg score, total scans, logged-on-this-page), a weekly
+bar chart, a search input + Good/Neutral/Bad/All filter chips, then a
+swipeable list — dragging a row left reveals a delete action; a small
+always-visible delete icon does the same without a gesture. Tapping a row
+navigates to `/history/:id`. Pull-to-refresh at the top of the page.
+Delete requires confirming in a `BottomSheet`.
+
+### 4.4 Account (`/account`)
+Profile card (avatar with an upload button, inline-editable name, email),
+two stat cards, a settings card (theme toggle, and — only for accounts
+with a password — a collapsible change-password form), and a sign-out
+button.
+
+### 4.5 Login / Register
+Centered form (email/password + "Continue with Google"), an illustrated
+`AuthAside` panel beside it on desktop, hidden on mobile.
+
+---
+
+## 5. Component Hierarchy
 
 ```
 App
-├── AuthContext.Provider
-├── Navbar
-│   ├── Logo
-│   ├── NavLinks (conditional: guest vs logged-in)
-│   └── UserAvatar (dropdown: Profile, Logout)
+├── ThemeProvider / AuthProvider / ToastProvider
+├── Shell (per route)
+│   ├── Navbar
+│   │   └── ThemeToggle
+│   ├── <main key={pathname}> — route content
+│   ├── Footer (most routes; omitted on Scanner/Login/Register/Account/ScanDetail)
+│   └── BottomNav (mobile, signed-in only)
 │
-├── Routes
-│   ├── Home
-│   │   ├── HeroSection (tagline + CTA)
-│   │   └── ContextFeatureCards (3 cards)
-│   │
-│   ├── Login
-│   │   ├── LoginForm (email + password)
-│   │   └── GoogleOAuthButton
-│   │
-│   ├── Register
-│   │   └── RegisterForm (name + email + password)
-│   │
-│   ├── Scanner (Protected)
-│   │   ├── ContextSelector (pill buttons: Health/Eco/Productivity/Finance)
-│   │   ├── Camera
-│   │   │   ├── <video> (WebRTC stream)
-│   │   │   ├── <canvas> (AR overlay)
-│   │   │   └── DetectionChip (floating label: "bottle 94%")
-│   │   ├── ScanButton
-│   │   └── VerdictCard (conditional — appears after scan)
-│   │       ├── VerdictBadge (Good/Bad/Neutral)
-│   │       ├── ScoreBar (0–100)
-│   │       ├── ReasonText
-│   │       └── TipsList (3 items)
-│   │
-│   └── History (Protected)
-│       ├── FilterBar (context filter + date sort)
-│       ├── ScanList
-│       │   └── ScanItem[] (object, context, verdict, score, date, delete btn)
-│       ├── Pagination
-│       └── Dashboard
-│           ├── WeeklyScoreCard
-│           └── InfographicChart (Recharts BarChart)
+├── Home
+│   ├── PhoneMockup (animated sample-scan preview)
+│   ├── Carousel (STEPS) / Carousel (CAPABILITIES)
+│   └── Dashboard-preview card (Recharts BarChart + PieChart)
+│
+├── Login / Register
+│   ├── GoogleButton
+│   └── AuthAside
+│
+├── Scanner (Protected)
+│   ├── Camera (<video> + <canvas> overlay)
+│   ├── Onboarding (BottomSheet, first-visit only)
+│   └── VerdictCard (conditional — after a scan)
+│       ├── NutritionPanel (food scans)
+│       ├── IngredientInfographic (food scans)
+│       └── BreakdownChart (non-food scans)
+│
+├── History (Protected)
+│   ├── StatCard × 3
+│   ├── InfographicChart (weekly bar chart)
+│   ├── search input + verdict filter chips
+│   ├── SwipeableRow[] (Pointer Events drag-to-delete)
+│   ├── Pagination
+│   └── BottomSheet (delete confirmation)
+│
+├── ScanDetail (Protected)
+│   └── VerdictCard (fetched by id)
+│
+└── Account (Protected)
+    ├── AvatarUpload
+    ├── EditableName
+    ├── StatCard × 2
+    └── ChangePassword (collapsible, conditional on hasPassword)
 ```
 
 ---
 
-## 5. State Management
+## 6. State Management
 
 ### Global State (AuthContext)
 ```javascript
-const AuthContext = createContext()
+const AuthContext = createContext(null)
 
 // Value provided:
 {
-  user: { _id, name, email, avatar } | null,
+  user: { _id, name, email, avatar, hasPassword } | null,
   token: string | null,
-  login: (token, user) => void,  // saves to localStorage
-  logout: () => void,             // clears localStorage
-  isAuthenticated: boolean
+  login: (accessToken, refreshToken, user) => void,   // persists to localStorage
+  logout: () => void,                                  // clears localStorage
+  updateUser: (patch) => void,                         // merges a profile patch, no token change
+  isAuthenticated: boolean,
+  loading: boolean
 }
 ```
 
 ### Scanner Page Local State
 ```javascript
-const [context, setContext] = useState('health')
-const [detectedObject, setDetectedObject] = useState(null)  // e.g. "bottle"
 const [isScanning, setIsScanning] = useState(false)
-const [scanResult, setScanResult] = useState(null)  // {verdict, score, reason, tips}
-const [cameraError, setCameraError] = useState(null)
+const [scanResult, setScanResult] = useState(null)       // verdict response | null
+const [uploadedSrc, setUploadedSrc] = useState(null)      // uploaded photo, if any
+const [capturedPreview, setCapturedPreview] = useState(null) // just-taken photo awaiting retake/confirm
+// detectedObject/confidence derive from whichever source (live camera vs.
+// uploaded/captured image) is active — see useDetection below
+```
+
+### History Page Local State
+```javascript
+const [scans, setScans] = useState([])
+const [page, setPage] = useState(1)
+const [q, setQ] = useState('')              // debounced 300ms before hitting the API
+const [verdictFilter, setVerdictFilter] = useState('')
+const [confirmDelete, setConfirmDelete] = useState(null)
 ```
 
 ### useCamera Hook
 ```javascript
 // Returns:
-{ videoRef, isReady, error, flipCamera }
+{ videoRef, isReady, error, startCamera, stopCamera, flipCamera }
 ```
 
 ### useDetection Hook
 ```javascript
 // Returns:
-{ detectedObject, confidence, isModelLoaded }
-// Internally: loads COCO-SSD once, runs detect() on animation frame
+{ predictions, isModelLoaded, detectedObject, confidence, detectImage }
+// Internally: loads COCO-SSD once, runs detect() on an animation-frame loop
+// for the live feed; detectImage() does a one-shot detection for an
+// uploaded/captured static image.
 ```
 
 ---
 
-## 6. Design System
+## 7. Design System
 
-### Color Palette (Tailwind custom config)
-```javascript
-// tailwind.config.js
-colors: {
-  primary: '#6366F1',     // Indigo — brand color
-  good: '#22C55E',        // Green — Good verdict
-  bad: '#EF4444',         // Red — Bad verdict
-  neutral: '#F59E0B',     // Amber — Neutral verdict
-  surface: '#0F172A',     // Dark bg (dark mode default)
-  card: '#1E293B',        // Card background
-  text: '#F1F5F9',        // Primary text
-  muted: '#94A3B8',       // Secondary text
-}
-```
+### Color System
+Colors are CSS custom properties (`--bg`, `--surface`, `--text`, `--brand`,
+`--good`, `--bad`, `--neutral`, etc.), consumed in Tailwind as
+`rgb(var(--x) / <alpha-value>)` so opacity modifiers work. Light and dark
+values are both defined; `data-theme="dark"|"light"` on `<html>` (set
+before first paint via an inline script to avoid a flash) picks which set
+applies. Brand color is emerald green; verdict colors are green (Good),
+red (Bad), amber (Neutral).
 
 ### Typography
-- **Font:** Inter (Google Fonts — free)
-- **Headings:** `font-bold text-3xl` (h1), `text-xl` (h2)
-- **Body:** `text-base text-text`
-- **Muted:** `text-sm text-muted`
+- **Display/headings:** Plus Jakarta Sans, `font-display font-extrabold`
+- **Body:** Inter
+- **Mono (labels, stats, timestamps):** IBM Plex Mono
 
 ### Verdict Styling
-| Verdict | Badge color | Canvas glow | Score bar color |
-|---------|------------|-------------|----------------|
-| Good | `bg-good text-white` | Green (#22C55E) rgba shadow | `bg-good` |
-| Bad | `bg-bad text-white` | Red (#EF4444) rgba shadow | `bg-bad` |
-| Neutral | `bg-neutral text-black` | Amber (#F59E0B) rgba shadow | `bg-neutral` |
+| Verdict | Text/badge | Bounding-box glow | Score bar |
+|---------|-----------|-------------------|-----------|
+| Good | `text-good` | Green shadow | `rgb(var(--good))` |
+| Bad | `text-bad` | Red shadow | `rgb(var(--bad))` |
+| Neutral | `text-neutral` | Amber shadow | `rgb(var(--neutral))` |
 
-### Responsive Breakpoints (Tailwind defaults)
-| Breakpoint | Width | Layout change |
-|-----------|-------|--------------|
-| `sm` | 640px | Stack navigation items |
-| `md` | 768px | Side-by-side camera + verdict |
-| `lg` | 1024px | Full dashboard layout |
+### Responsive Approach
+Mobile-first throughout (Tailwind's default `min-width` breakpoints): base
+styles target a phone, `sm:`/`md:`/`lg:` add desktop treatment on top —
+not the other way around. `md:` (768px) is where the bottom nav gives
+way to the top Navbar's own links, and where the landing page's swipe-
+carousels give way to a static grid.
 
 ---
 
-## 7. Camera & AR Overlay Behavior
+## 8. Camera & Detection Overlay Behavior
 
 ### Camera Permission Flow
 ```
 User lands on /scanner
   → useCamera hook calls navigator.mediaDevices.getUserMedia({video: true})
   → If granted: stream assigned to videoRef.current.srcObject
-  → If denied: show banner "Camera access needed. Click here for instructions."
+  → If denied: show an inline error panel with instructions, and the
+    upload/take-picture path remains usable without camera access
 ```
 
-### Canvas AR Glow
+### Canvas Detection Overlay
 ```javascript
-// utils/canvasOverlay.js
-export function drawOverlay(ctx, predictions, verdict) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  predictions.forEach(pred => {
-    const [x, y, w, h] = pred.bbox
-    const color = verdict === 'Good' ? '#22C55E'
-                : verdict === 'Bad'  ? '#EF4444'
-                : '#F59E0B'
+// utils/canvasOverlay.js — drawOverlay(canvas, predictions, verdict)
+// Draws a bounding box + label per prediction; once a verdict exists,
+// the box glows in the verdict's color (green/red/amber) via a canvas
+// shadow, not a separate "AR" layer.
+```
 
-    // Glow effect using shadow
-    ctx.shadowColor = color
-    ctx.shadowBlur = 20
-    ctx.strokeStyle = color
-    ctx.lineWidth = 3
-    ctx.strokeRect(x, y, w, h)
-    ctx.shadowBlur = 0
-
-    // Label chip
-    ctx.fillStyle = color
-    ctx.fillRect(x, y - 24, w, 24)
-    ctx.fillStyle = '#fff'
-    ctx.font = '14px Inter'
-    ctx.fillText(`${pred.class} ${Math.round(pred.score * 100)}%`, x + 4, y - 6)
-  })
-}
+### Frame Capture
+```javascript
+// utils/canvasOverlay.js — captureFrame(el)
+// Accepts a <video> (live) or <img> (uploaded/captured) element, draws it
+// to an offscreen canvas at its native size, returns a base64 JPEG.
 ```
 
 ---
 
-## 8. Axios API Service
+## 9. Axios API Service
 
 ```javascript
 // services/api.js
 import axios from 'axios'
 
-const api = axios.create({ baseURL: import.meta.env.VITE_API_URL })
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' })
 
 // Inject token on every request
 api.interceptors.request.use(config => {
@@ -329,20 +281,38 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// Auto-refresh on 401
+// Auto-refresh once on a 401, then retry the original request
 api.interceptors.response.use(
   res => res,
   async err => {
-    if (err.response?.status === 401) {
+    const original = err.config
+    if (err.response?.status === 401 && !original._retry) {
+      original._retry = true
       const refresh = localStorage.getItem('vw_refresh')
-      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/auth/refresh`, { refreshToken: refresh })
-      localStorage.setItem('vw_token', data.token)
-      err.config.headers.Authorization = `Bearer ${data.token}`
-      return axios(err.config)
+      if (!refresh) return Promise.reject(err)
+      try {
+        const { data } = await axios.post(`${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`, { refreshToken: refresh })
+        localStorage.setItem('vw_token', data.accessToken)
+        original.headers.Authorization = `Bearer ${data.accessToken}`
+        return api(original)
+      } catch {
+        localStorage.clear()
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(err)
   }
 )
+
+export function getApiError(err, fallback = 'Something went wrong. Please try again.') {
+  if (err?.response) {
+    const d = err.response.data || {}
+    if (Array.isArray(d.errors) && d.errors.length) return d.errors[0].msg || fallback
+    return d.error || d.message || fallback
+  }
+  if (err?.request) return 'Can\'t reach the server. Make sure the backend is running, then try again.'
+  return fallback
+}
 
 export default api
 ```

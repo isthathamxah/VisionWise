@@ -124,7 +124,7 @@ app.use(helmet()) // Sets: X-Content-Type-Options, X-Frame-Options,
 ```javascript
 app.use(cors({
   origin: process.env.CLIENT_URL, // e.g. https://visionwise.vercel.app
-  methods: ['GET', 'POST', 'DELETE'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }))
@@ -142,10 +142,16 @@ body('email').isEmail().normalizeEmail(),
 body('password').isLength({ min: 8, max: 64 }).matches(/[A-Z]/).matches(/[0-9]/),
 body('name').trim().isLength({ min: 2, max: 50 }).escape()
 
-// routes/scan.js
-body('context').isIn(['health', 'eco', 'productivity', 'finance']),
+// routes/scan.js — no context param since the 4-context system was
+// removed (see PRD.md §0); Gemini decides food/non-food from the image itself
 body('objectLabel').trim().isLength({ max: 100 }).escape(),
 body('imageBase64').isString().isLength({ max: 200000 }) // ~150KB max
+
+// routes/auth.js — profile/password/avatar endpoints added post-MVP
+body('name').trim().isLength({ min: 2, max: 50 }).escape()               // PATCH /auth/profile
+body('newPassword').isLength({ min: 8, max: 64 }).matches(/[A-Z]/).matches(/[0-9]/) // PATCH /auth/password
+// PATCH /auth/avatar validates a data:image/(png|jpeg|webp);base64, prefix
+// and a 300KB length cap server-side, on top of a client-side resize to 256px
 ```
 
 **MongoDB Injection Prevention:**

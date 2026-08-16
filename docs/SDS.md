@@ -1,8 +1,8 @@
 # Software Design Specification (SDS)
-## VisionWise — AI-Powered Contextual Object Scanner & Recommender
-**Version:** 1.0  
-**Author:** Muhammad Taha (4618-FOC/BSCS/F22)  
-**Date:** June 2026
+## VisionWise — AI-Powered Nutrition & Food Scanner
+**Version:** 2.0 (rewritten to match the shipped architecture — see PRD.md §0 for what changed and why)
+**Author:** Muhammad Taha (4618-FOC/BSCS/F22)
+**Date:** August 2026
 
 ---
 
@@ -20,16 +20,17 @@
 ## 1. System Overview
 
 VisionWise follows a **MERN stack** architecture with a clear separation between:
-- **Client** (React + Vite): handles camera, UI, TF.js inference
-- **Server** (Node + Express): handles auth, business logic, Gemini API calls
-- **Database** (MongoDB Atlas): stores users, scan logs, context rules
+- **Client** (React + Vite): camera/upload capture, UI, TF.js inference, PWA shell
+- **Server** (Node + Express): auth, business logic, Gemini API calls
+- **Database** (MongoDB Atlas): stores users and scan logs
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         CLIENT (React)                          │
 │  ┌───────────┐  ┌────────────────┐  ┌────────────────────────┐  │
-│  │  Camera   │  │ ContextSelector│  │     VerdictCard        │  │
-│  │  (WebRTC) │  │ (4 modes)      │  │  (Good/Bad + Chart)   │  │
+│  │  Camera   │  │  Upload / Take │  │     VerdictCard        │  │
+│  │  (WebRTC) │  │  Picture       │  │  (score, nutrition,    │  │
+│  │           │  │                │  │   ingredients)         │  │
 │  └─────┬─────┘  └───────┬────────┘  └────────────┬───────────┘  │
 │        │                 │                         │              │
 │        ▼                 ▼                         │              │
@@ -39,6 +40,7 @@ VisionWise follows a **MERN stack** architecture with a clear separation between
 │  │  Axios POST /api/scan → verdict response        │             │
 │  └──────────────────────┬──────────────────────────┘             │
 │                         │                                        │
+│  BottomNav / BottomSheet / ToastContext / service worker (PWA)   │
 └─────────────────────────│────────────────────────────────────────┘
                           │ HTTPS REST
 ┌─────────────────────────▼────────────────────────────────────────┐
@@ -52,7 +54,7 @@ VisionWise follows a **MERN stack** architecture with a clear separation between
 │  ┌──────────────────────────────────────────────────────────┐    │
 │  │              Controllers + Services                      │    │
 │  │  authController   scanController   historyController    │    │
-│  │  geminiService (wraps Google AI SDK)                    │    │
+│  │  geminiService (wraps @google/generative-ai SDK)         │    │
 │  └──────────────────────────┬───────────────────────────────┘    │
 │                             │                                     │
 └─────────────────────────────│─────────────────────────────────────┘
@@ -70,53 +72,83 @@ VisionWise follows a **MERN stack** architecture with a clear separation between
 ## 2. Module Decomposition
 
 ### Module 1: Real-time Vision Module (Client-side)
-**Responsibility:** Capture camera frames, run TF.js COCO-SSD, render AR overlay
+**Responsibility:** Capture camera frames or a photo, run TF.js COCO-SSD, render the detection overlay
 
 | Component | File | Responsibility |
 |-----------|------|----------------|
 | `useCamera` | `hooks/useCamera.js` | getUserMedia, stream management, front/rear toggle |
-| `useDetection` | `hooks/useDetection.js` | Load COCO-SSD, run inference on video frames, trigger scan |
-| `canvasOverlay` | `utils/canvasOverlay.js` | Draw bounding box + glow (green/red) on canvas |
+| `useDetection` | `hooks/useDetection.js` | Load COCO-SSD, run inference on video frames or a one-shot image, trigger scan |
+| `canvasOverlay` | `utils/canvasOverlay.js` | Draw bounding box + label on canvas; capture a frame to base64 |
 | `Camera` | `components/Camera/Camera.jsx` | `<video>` + `<canvas>` stacked UI |
+| `Scanner` page | `pages/Scanner.jsx` | Orchestrates camera / upload / take-picture-with-retake, triggers a scan, renders `VerdictCard` |
 
 ### Module 2: AI Inference Engine (Server-side)
-**Responsibility:** Accept scan requests, call Gemini, return structured verdict
+**Responsibility:** Accept scan requests, call Gemini, return a structured verdict
 
 | Component | File | Responsibility |
 |-----------|------|----------------|
-| `geminiService` | `services/geminiService.js` | Build Gemini prompt, call API, parse JSON response |
-| `scanController` | `controllers/scanController.js` | Validate request, call geminiService, save ScanLog |
-| `scan routes` | `routes/scan.js` | POST /api/scan |
+| `geminiService` | `services/geminiService.js` | Build the Gemini prompt, call the API, parse and sanitize the JSON response (`sanitizeFood`), rule-based fallback on rate-limit |
+| `scanController` | `controllers/scanController.js` | Validate request, call `geminiService`, save `ScanLog` |
+| `scan routes` | `routes/scan.js` | `POST /api/scan` |
 
-### Module 3: Knowledge & Recommendation Engine
-**Responsibility:** Context-aware verdict logic via Gemini prompt engineering
+### Module 3: Nutrition Reasoning
+**Responsibility:** Food/non-food decision and nutrition analysis via Gemini prompt engineering
 
-Gemini receives a structured prompt:
+There is no user-facing context/category selection. The prompt itself asks
+Gemini to decide, from the image, whether the object is food — as an
+explicit first step, before anything else — then branches:
+
 ```
-You are a contextual object evaluator. The user scanned a "{objectLabel}" in "{context}" mode.
-Return ONLY valid JSON:
-{
-  "verdict": "Good" | "Bad" | "Neutral",
-  "score": <integer 0-100>,
-  "reason": "<one sentence explanation>",
-  "tips": ["<tip1>", "<tip2>", "<tip3>"]
-}
-Context rules:
-- Health: Judge nutritional/health impact
-- Eco: Judge environmental/recyclability impact
-- Productivity: Judge if object aids or distracts from work/study
-- Finance: Judge if object represents good or poor financial value
+STEP 1 — decide isFood first. isFood is true ONLY if the object itself is
+something a person eats or drinks. Everything else (electronics, tools,
+furniture, ...) is NOT food, even if food is visible nearby. When unsure,
+isFood is false.
+
+STEP 2 — if isFood is false: "food" is null, fill "breakdown" with 3-5
+generic factors that drove the verdict.
+
+STEP 3 — if isFood is true: "breakdown" is empty, fill "food" with
+dishType/source, nutrients (amount, unit, %DV, impact, direction), and
+ingredient explanations. Never invents numbers — sets "unclear" instead
+of guessing when the image can't be read reliably.
 ```
+
+The response must match one of two complete JSON shapes (non-food:
+`"food": null`; food: `"breakdown": []` and a fully filled `"food"`
+object) — this is deliberate: an earlier version showed one template with
+`food` always present, which biased the model toward fabricating nutrition
+data even for non-food objects (see `docs/superpowers/plans` git history
+for the incident this fixed).
 
 ### Module 4: Analytics & User History
-**Responsibility:** Store, retrieve, and visualize scan history
+**Responsibility:** Store, retrieve, search, and visualize scan history
 
 | Component | File | Responsibility |
 |-----------|------|----------------|
-| `historyController` | `controllers/historyController.js` | CRUD for ScanLogs |
-| `ScanLog model` | `models/ScanLog.js` | Mongoose schema |
-| `Dashboard` | `components/Dashboard/Dashboard.jsx` | Charts + weekly score |
-| `History page` | `pages/History.jsx` | Paginated scan list |
+| `historyController` | `controllers/historyController.js` | List (paginated, searchable, verdict-filterable), get-by-id, analytics, delete |
+| `ScanLog` model | `models/ScanLog.js` | Mongoose schema |
+| `InfographicChart` | `components/InfographicChart/` | Weekly bar chart, breakdown donut, nutrition panel, ingredient cards |
+| `History` page | `pages/History.jsx` | Paginated/searchable scan list, swipe-to-delete, pull-to-refresh |
+| `ScanDetail` page | `pages/ScanDetail.jsx` | Real, shareable per-scan page at `/history/:id` |
+
+### Module 5: Account & Profile
+**Responsibility:** Authentication, session, and profile management
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `authController` | `controllers/authController.js` | Register, login, refresh, Google OAuth callback, get/update profile, change password, update avatar |
+| `Account` page | `pages/Account.jsx` | Editable name, avatar upload, change password, theme, sign out |
+| `AuthContext` | `context/AuthContext.jsx` | Global auth state; `updateUser()` merges a profile patch without touching tokens |
+
+### Module 6: Mobile App Shell
+**Responsibility:** PWA installability, navigation chrome, and native-feeling interaction
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `service-worker.js` | `public/service-worker.js` | Caches the app shell and last-seen API GETs; navigations fall back to the cached shell offline |
+| `BottomNav` | `components/BottomNav/BottomNav.jsx` | Primary mobile navigation (Dashboard / Scanner / Account) |
+| `BottomSheet` | `components/BottomSheet/BottomSheet.jsx` | Reusable slide-up modal for detail/confirm views |
+| `ToastContext` | `context/ToastContext.jsx` | App-wide toast notifications |
 
 ---
 
@@ -126,11 +158,11 @@ Context rules:
 ```json
 {
   "_id": "ObjectId",
-  "name": "string (required)",
-  "email": "string (required, unique)",
-  "password": "string (nullable — null for OAuth users)",
+  "name": "string (required, 2-50 chars)",
+  "email": "string (required, unique, lowercase)",
+  "password": "string (nullable — null for Google-only accounts)",
   "googleId": "string (nullable — set for Google OAuth users)",
-  "avatar": "string (URL, optional)",
+  "avatar": "string (nullable — a data:image/... URL, resized to 256px client-side, capped at ~300KB server-side)",
   "createdAt": "Date",
   "updatedAt": "Date"
 }
@@ -141,72 +173,100 @@ Context rules:
 {
   "_id": "ObjectId",
   "userId": "ObjectId (ref: users)",
-  "objectLabel": "string (e.g. 'bottle')",
-  "context": "string (enum: health | eco | productivity | finance)",
+  "objectLabel": "string (e.g. 'banana', 'cell phone')",
+  "context": "string (legacy field from the removed 4-context system, always 'health' now)",
   "verdict": "string (enum: Good | Bad | Neutral)",
-  "score": "number (0–100)",
+  "score": "number (0-100)",
   "reason": "string",
-  "tips": ["string", "string", "string"],
-  "imageSnapshot": "string (base64, optional — not stored by default)",
-  "createdAt": "Date"
+  "tips": ["string"],
+  "breakdown": [{ "label": "string", "percent": "number" }],
+  "food": {
+    "isFood": true,
+    "dishType": "dish | packaged",
+    "source": "estimated | label",
+    "servingNote": "string",
+    "unclear": "boolean",
+    "nutrients": [{ "label": "string", "amount": "number", "unit": "string", "percentDV": "number", "impact": "Low | Moderate | High | null", "direction": "limit | beneficial | neutral", "note": "string" }],
+    "ingredients": [{ "name": "string", "whatItIs": "string", "whyUsed": "string", "effect": "string", "concern": "Low | Moderate | High | null" }]
+  },
+  "createdAt": "Date",
+  "updatedAt": "Date"
 }
 ```
-
-### Collection: `contextrules` (seed data, read-only at runtime)
-```json
-{
-  "_id": "ObjectId",
-  "context": "string",
-  "objectLabel": "string",
-  "defaultVerdict": "string",
-  "notes": "string"
-}
-```
-*This collection seeds fallback rules if Gemini is unavailable.*
+`food` is `undefined` on the document for non-food scans (`sanitizeFood`
+returns `undefined` when Gemini's `food` was `null` or `isFood` was
+false) — there is no separate `contextrules` collection; that was dead
+code from the original design and was deleted.
 
 ---
 
 ## 4. API Contract
 
-Base URL: `http://localhost:5000/api` (dev) | `https://visionwise-api.onrender.com/api` (prod)
+Base URL: `http://localhost:5000/api` (dev) — not yet deployed to a public URL.
 
 ### Auth Routes
 
 | Method | Endpoint | Auth | Body | Response |
 |--------|----------|------|------|----------|
-| POST | `/auth/register` | None | `{name, email, password}` | `{token, user}` |
-| POST | `/auth/login` | None | `{email, password}` | `{token, refreshToken, user}` |
+| POST | `/auth/register` | None | `{name, email, password}` | `{accessToken, refreshToken, user}` |
+| POST | `/auth/login` | None | `{email, password}` | `{accessToken, refreshToken, user}` |
 | GET | `/auth/google` | None | — | Redirect to Google OAuth |
-| GET | `/auth/google/callback` | None | — | `{token, user}` |
-| POST | `/auth/refresh` | None | `{refreshToken}` | `{token}` |
-| POST | `/auth/logout` | JWT | — | `{message}` |
+| GET | `/auth/google/callback` | None | — | Redirect to client with `?token=&refresh=` |
+| POST | `/auth/refresh` | None | `{refreshToken}` | `{accessToken}` |
+| GET | `/auth/me` | JWT | — | `user` (name, email, avatar, hasPassword) |
+| PATCH | `/auth/profile` | JWT | `{name}` | `user` |
+| PATCH | `/auth/password` | JWT | `{currentPassword, newPassword}` | `{message}` |
+| PATCH | `/auth/avatar` | JWT | `{avatar: "data:image/...;base64,..."}` | `user` |
+| POST | `/auth/forgot-password` | None | `{email}` | `{message}` (always generic, doesn't reveal whether the email exists) |
+| POST | `/auth/reset-password` | None | `{token, password}` | `{message}` |
+
+`user` shape: `{ _id, name, email, avatar, hasPassword }` — `hasPassword`
+is derived server-side as `!googleId` (this app never links both auth
+methods on one account), so the client can hide password-change UI for
+Google-only accounts.
 
 ### Scan Routes
 
 | Method | Endpoint | Auth | Body | Response |
 |--------|----------|------|------|----------|
-| POST | `/scan` | JWT | `{imageBase64, objectLabel, context}` | `{verdict, score, reason, tips, scanLogId}` |
+| POST | `/scan` | JWT | `{imageBase64, objectLabel}` | `{verdict, score, reason, tips, breakdown, food?, scanLogId}` |
 
 **POST /scan — Request Body:**
 ```json
 {
   "imageBase64": "data:image/jpeg;base64,...",
-  "objectLabel": "bottle",
-  "context": "eco"
+  "objectLabel": "banana"
 }
 ```
 
-**POST /scan — Response:**
+**POST /scan — Response (food):**
 ```json
 {
-  "verdict": "Bad",
-  "score": 28,
-  "reason": "Single-use plastic bottles contribute significantly to landfill waste.",
-  "tips": [
-    "Switch to a reusable stainless steel bottle",
-    "Check the recycling symbol — #1 PET is recyclable in most cities",
-    "Avoid purchasing bottled water in bulk"
-  ],
+  "verdict": "Good",
+  "score": 82,
+  "reason": "A whole banana is a good source of potassium and fiber with no added sugar.",
+  "tips": ["Pair with protein to slow sugar absorption.", "Riper bananas are sweeter but higher glycemic."],
+  "breakdown": [],
+  "food": {
+    "isFood": true,
+    "dishType": "dish",
+    "source": "estimated",
+    "unclear": false,
+    "nutrients": [{ "label": "Calories", "amount": 105, "unit": "kcal", "percentDV": 5, "impact": "Low", "direction": "neutral", "note": "..." }],
+    "ingredients": []
+  },
+  "scanLogId": "ObjectId"
+}
+```
+
+**POST /scan — Response (non-food, e.g. a phone):**
+```json
+{
+  "verdict": "Neutral",
+  "score": 50,
+  "reason": "A personal electronic device — not a health-relevant scan.",
+  "tips": ["..."],
+  "breakdown": [{ "label": "Build quality", "percent": 60 }, { "label": "Usage context", "percent": 40 }],
   "scanLogId": "ObjectId"
 }
 ```
@@ -215,8 +275,9 @@ Base URL: `http://localhost:5000/api` (dev) | `https://visionwise-api.onrender.c
 
 | Method | Endpoint | Auth | Query | Response |
 |--------|----------|------|-------|----------|
-| GET | `/history` | JWT | `?page=1&limit=10&context=eco` | `{scans[], total, page}` |
-| GET | `/history/analytics` | JWT | `?days=7` | `{weeklyScore, chartData[], contextBreakdown}` |
+| GET | `/history` | JWT | `?page=1&limit=8&q=banana&verdict=Good` | `{scans[], total, page, pages}` |
+| GET | `/history/:id` | JWT | — | `ScanLog` (404 if not found or not owned) |
+| GET | `/history/analytics` | JWT | `?days=7` | `{weeklyScore, chartData[], totalScans}` |
 | DELETE | `/history/:id` | JWT | — | `{message}` |
 
 ---
@@ -243,18 +304,35 @@ User          Browser         Express        MongoDB
 ```
 User      Browser(TFjs)    Browser(Axios)    Express    Gemini     MongoDB
  │               │                │               │          │           │
- │──click Scan──>│                │               │          │           │
+ │──tap Scan────>│                │               │          │           │
  │               │──detect obj────│               │          │           │
  │               │  (COCO-SSD)    │               │          │           │
  │               │──capture frame─│               │          │           │
  │               │                │─POST /scan───>│          │           │
  │               │                │               │──prompt─>│           │
+ │               │                │               │ (decides food first) │
  │               │                │               │<──JSON───│           │
  │               │                │               │──save────────────────>
  │               │                │               │<──scanLogId───────────
  │               │                │<──response────│          │           │
  │<──VerdictCard─│                │               │          │           │
- │  + AR glow    │                │               │          │           │
+```
+
+### 5.3 Password Reset Flow
+```
+User          Browser         Express        MongoDB      Gmail SMTP
+ │──forgot pw──>│                │               │              │
+ │              │──POST /auth/forgot-password──>│              │
+ │              │                │──find user───>│              │
+ │              │                │──sign reset token (short-lived)
+ │              │                │──send email────────────────>│
+ │              │<──{message}────│               │              │
+ │  (opens email, clicks link)   │               │              │
+ │──new password>│               │               │              │
+ │              │──POST /auth/reset-password {token, password}──>
+ │              │                │──verify token──               │
+ │              │                │──hash + save──>│              │
+ │              │<──{message}────│               │              │
 ```
 
 ---
@@ -263,19 +341,22 @@ User      Browser(TFjs)    Browser(Axios)    Express    Gemini     MongoDB
 
 ### Level 0 (Context Diagram)
 ```
-[User] ──camera frame + context──> [VisionWise System] ──verdict──> [User]
+[User] ──camera frame / photo──> [VisionWise System] ──verdict──> [User]
                                            │
                                     ──scan data──> [MongoDB Atlas]
                                            │
                                     ──image+prompt──> [Gemini API]
+                                           │
+                                    ──reset email──> [Gmail SMTP]
 ```
 
 ### Level 1
 ```
-[Camera] → (1.0 Capture Frame) → frame
+[Camera / Upload] → (1.0 Capture Frame) → frame
 frame → (2.0 Detect Object) → {label, confidence}
-{label, context} → (3.0 Build Prompt) → structured_prompt
+{label, frame} → (3.0 Build Prompt) → structured_prompt (food/non-food decision first)
 structured_prompt → (4.0 Call Gemini) → verdict_json
+verdict_json → (4.1 Sanitize Food Payload) → clamped/validated nutrition data
 verdict_json + userId → (5.0 Save ScanLog) → ScanLog[MongoDB]
 verdict_json → (6.0 Render Verdict) → [User Interface]
 ScanLog[] → (7.0 Aggregate Analytics) → [Dashboard]
@@ -288,31 +369,42 @@ ScanLog[] → (7.0 Aggregate Analytics) → [Dashboard]
 ### Client State Management
 ```
 App
-├── AuthContext (global: user, token, login, logout)
+├── AuthContext (global: user, token, login, logout, updateUser)
+├── ThemeContext (global: theme, toggle)
+├── ToastContext (global: showToast)
 │
 ├── Scanner Page (local state)
-│   ├── selectedContext: string
 │   ├── detectedObject: string
-│   ├── scanResult: {verdict, score, reason, tips} | null
-│   ├── isScanning: boolean
-│   └── cameraActive: boolean
+│   ├── uploadedSrc / capturedPreview: string | null
+│   ├── scanResult: {verdict, score, reason, tips, breakdown, food?} | null
+│   └── isScanning: boolean
 │
-└── History Page (local state)
-    ├── scans: ScanLog[]
-    ├── page: number
-    └── analyticsData: object
+├── History Page (local state)
+│   ├── scans: ScanLog[]
+│   ├── page, pages: number
+│   ├── q, verdictFilter: string
+│   └── analytics: object
+│
+├── Account Page (local state)
+│   ├── stats: object
+│   └── (name-edit / password-change / avatar-upload sub-state)
+│
+└── ScanDetail Page (local state)
+    └── scan: ScanLog | null (fetched by id)
 ```
 
 ### Server Middleware Stack (per request)
 ```
 Request
-  → cors()
   → helmet()
-  → express.json()
-  → rateLimiter (100/15min)
+  → cors()  (methods: GET, POST, PATCH, DELETE)
+  → globalLimiter (rate limiting)
+  → express.json({ limit: '5mb' })
+  → passport.initialize()
   → [route handler]
     → authMiddleware (JWT verify — protected routes only)
-      → controller
-        → service / model
-          → Response
+      → express-validator (body validation — auth/scan routes)
+        → controller
+          → service / model
+            → Response
 ```
