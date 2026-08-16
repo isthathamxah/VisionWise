@@ -5,7 +5,8 @@ import { useToast } from '../context/ToastContext'
 
 export function useDetection(videoRef, isVideoReady) {
   const showToast = useToast()
-  const modelRef = useRef(null)
+  const modelRef = useRef(null) // fast backbone — drives the real-time video loop
+  const fullModelPromiseRef = useRef(null) // heavier, more accurate backbone — one-shot upload/capture only
   const rafRef = useRef(null)
   const mountedRef = useRef(true)
   const warnedRef = useRef(false) // only surface one toast per session, not one per failed frame
@@ -14,7 +15,7 @@ export function useDetection(videoRef, isVideoReady) {
 
   useEffect(() => {
     mountedRef.current = true
-    cocoSsd.load()
+    cocoSsd.load({ base: 'lite_mobilenet_v2' })
       .then(model => {
         if (!mountedRef.current) return
         modelRef.current = model
@@ -24,6 +25,15 @@ export function useDetection(videoRef, isVideoReady) {
         console.error('[detection] model failed to load:', err)
         if (mountedRef.current) showToast('Could not load the detection model. Try reloading the page.', 'error')
       })
+    // Loaded in parallel, not awaited here. A one-shot scan of a static photo has no
+    // 30fps constraint, so it's worth the extra accuracy — confirmed empirically: the
+    // lite backbone misses real objects (e.g. a car at 0.37 confidence, just under the
+    // 0.5 cutoff) that the full backbone catches (0.61). The live loop above keeps the
+    // fast backbone so real-time camera detection isn't slowed down.
+    fullModelPromiseRef.current = cocoSsd.load({ base: 'mobilenet_v2' }).catch(err => {
+      console.error('[detection] full-accuracy model failed to load, falling back to the fast one:', err)
+      return null
+    })
     return () => {
       mountedRef.current = false
       cancelAnimationFrame(rafRef.current)
@@ -68,12 +78,14 @@ export function useDetection(videoRef, isVideoReady) {
 
   const topPrediction = predictions[0] || null
 
-  // One-shot detection on a static image (upload flow) — reuses the already-loaded
-  // model instead of the video requestAnimationFrame loop above.
+  // One-shot detection on a static image (upload/capture flow) — uses the more
+  // accurate backbone (falls back to the fast one if it failed to load) instead
+  // of the video requestAnimationFrame loop above.
   const detectImage = async (imgEl) => {
-    if (!modelRef.current) return []
+    const model = (await fullModelPromiseRef.current) || modelRef.current
+    if (!model) return []
     try {
-      const preds = await modelRef.current.detect(imgEl)
+      const preds = await model.detect(imgEl)
       return preds.filter(p => p.score > 0.5)
     } catch (err) {
       console.error('[detection] image detection failed:', err)
