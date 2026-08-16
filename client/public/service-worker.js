@@ -6,7 +6,9 @@
 //  3. Everything else (app shell, JS/CSS, icons): cache-first, filling the
 //     cache as things are fetched; SPA navigations fall back to the cached
 //     shell so a direct/offline visit to a client-side route still boots.
-const SHELL_CACHE = 'visionwise-shell-v1'
+// Bump the shell version on every fix that touches this file — it also forces
+// a clean cache for anyone whose cache was poisoned by the bug fixed below.
+const SHELL_CACHE = 'visionwise-shell-v2'
 const API_CACHE = 'visionwise-api-v1'
 
 self.addEventListener('install', event => {
@@ -49,8 +51,20 @@ self.addEventListener('fetch', event => {
 
   event.respondWith(
     caches.match(request).then(cached => cached || fetch(request).then(res => {
-      const copy = res.clone()
-      caches.open(SHELL_CACHE).then(c => c.put(request, copy))
+      // vercel.json's SPA rewrite (`/(.*) -> /index.html`) is a catch-all: if a
+      // hashed asset request ever falls through it — a deploy-timing race, a
+      // dropped file — Vercel returns index.html with a 200, not a 404. Caching
+      // that blindly under the asset's own URL poisons this cache permanently
+      // for that URL, breaking the app until the user manually clears site
+      // data, immune to any later fix since cache-first serves it forever.
+      // Only cache real hits: ok status, and no HTML swapped in for a
+      // non-HTML request.
+      const looksSwapped = res.ok && !request.url.endsWith('.html') && !request.url.endsWith('/')
+        && (res.headers.get('content-type') || '').includes('text/html')
+      if (res.ok && !looksSwapped) {
+        const copy = res.clone()
+        caches.open(SHELL_CACHE).then(c => c.put(request, copy))
+      }
       return res
     }))
   )
