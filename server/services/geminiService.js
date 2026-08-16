@@ -1,7 +1,16 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' })
+// GEMINI_API_KEYS is an optional comma-separated list — a hedge against
+// Gemini's daily free-tier quota (confirmed live: heavy testing exhausted it
+// for the rest of the day). Each additional key comes from a separate Google
+// account and gets its own independent free quota. GEMINI_API_KEY alone
+// still works exactly as before if no extra keys are configured.
+const keys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '')
+  .split(',')
+  .map(k => k.trim())
+  .filter(Boolean)
+
+const models = keys.map(key => new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-flash-latest' }))
 
 // Rules used when Gemini is rate-limited
 const fallbackRules = {
@@ -120,40 +129,48 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
   const isTransient = err =>
     err.status === 503 || err.name === 'AbortError' ||
     /503|high demand|Service Unavailable|abort|timeout/i.test(err.message || '')
-  const attempts = 3
+  const isQuotaExhausted = err => err.message?.includes('429') || err.status === 429
+  const attemptsPerKey = 3
   let lastErr
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const result = await model.generateContent([prompt, imagePart], { timeout: 15000 })
-      const text = result.response.text().trim()
-      const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      const parsed = JSON.parse(cleaned)
-      parsed.breakdown = Array.isArray(parsed.breakdown)
-        ? parsed.breakdown
-            .filter(b => b?.label && Number.isFinite(b.percent))
-            .slice(0, 5)
-            .map(b => ({ label: String(b.label).slice(0, 60), percent: Math.max(0, Math.min(100, Math.round(b.percent))) }))
-        : []
-      parsed.food = sanitizeFood(parsed.food)
-      return parsed
-    } catch (err) {
-      lastErr = err
-      // On rate limit, use fallback right away so the app keeps working
-      if (err.message?.includes('429') || err.status === 429) {
-        console.log('[Gemini] Rate limited — using fallback verdict')
-        return getFallbackVerdict(objectLabel)
+
+  for (let k = 0; k < models.length; k++) {
+    for (let i = 0; i < attemptsPerKey; i++) {
+      try {
+        const result = await models[k].generateContent([prompt, imagePart], { timeout: 15000 })
+        const text = result.response.text().trim()
+        const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        const parsed = JSON.parse(cleaned)
+        parsed.breakdown = Array.isArray(parsed.breakdown)
+          ? parsed.breakdown
+              .filter(b => b?.label && Number.isFinite(b.percent))
+              .slice(0, 5)
+              .map(b => ({ label: String(b.label).slice(0, 60), percent: Math.max(0, Math.min(100, Math.round(b.percent))) }))
+          : []
+        parsed.food = sanitizeFood(parsed.food)
+        return parsed
+      } catch (err) {
+        lastErr = err
+        // A quota hit means THIS key is spent for the day — retrying it is pointless,
+        // move straight to the next key (if any) instead of burning retries on it.
+        if (isQuotaExhausted(err)) {
+          console.log(`[Gemini] Key ${k + 1}/${models.length} rate-limited — trying next key`)
+          break
+        }
+        if (isTransient(err) && i < attemptsPerKey - 1) {
+          console.log(`[Gemini] Transient error on key ${k + 1}/${models.length} (attempt ${i + 1}/${attemptsPerKey}), retrying:`, err.message)
+          await new Promise(r => setTimeout(r, 1000 * (i + 1))) // 1s, then 2s
+          continue
+        }
+        break // give up on this key, try the next one
       }
-      if (isTransient(err) && i < attempts - 1) {
-        console.log(`[Gemini] Transient error (attempt ${i + 1}/${attempts}), retrying:`, err.message)
-        await new Promise(r => setTimeout(r, 1000 * (i + 1))) // 1s, then 2s
-        continue
-      }
-      break
     }
   }
-  // Retries exhausted — a rule-based verdict beats a hard failure either way
-  if (isTransient(lastErr)) {
-    console.log('[Gemini] Still unavailable after retries — using fallback verdict')
+  // Every configured key failed. If it was for an expected reason (quota, transient
+  // high-demand), a rule-based verdict beats a hard failure. Anything else (bad key,
+  // malformed response, ...) gets rethrown so it's a visible 503 instead of silently
+  // masquerading as normal fallback usage forever.
+  if (isQuotaExhausted(lastErr) || isTransient(lastErr)) {
+    console.log('[Gemini] All API keys unavailable — using fallback verdict')
     return getFallbackVerdict(objectLabel)
   }
   throw lastErr
