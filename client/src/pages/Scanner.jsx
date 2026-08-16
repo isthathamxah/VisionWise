@@ -104,12 +104,15 @@ export default function Scanner() {
   }
 
   const handleScan = async () => {
-    if (!detectedObject || isScanning) return
+    if (isScanning || (!uploadedSrc && !detectedObject)) return // live camera still needs a lock-on; a fixed photo doesn't
     setIsScanning(true); setScanResult(null)
     if (navigator.vibrate) navigator.vibrate(35)
     try {
       const imageBase64 = captureFrame(uploadedSrc ? uploadImgRef.current : videoRef.current)
-      const { data } = await api.post('/scan', { imageBase64, objectLabel: detectedObject })
+      // COCO-SSD's fixed 80-class vocabulary misses plenty of real food (eggs, flour,
+      // butter...) — when it finds nothing, Gemini still analyzes the actual photo, it
+      // just doesn't get a hint label to go on.
+      const { data } = await api.post('/scan', { imageBase64, objectLabel: detectedObject || 'item in photo' })
       setScanResult(data)
       if (navigator.vibrate) navigator.vibrate(data.verdict === 'Good' ? [25, 20, 25] : 55)
     } catch (err) {
@@ -165,14 +168,14 @@ export default function Scanner() {
                   onLoad={handleUploadImgLoad}
                   onError={handleUploadImgError}
                   alt="Uploaded scan"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <Camera videoRef={videoRef} predictions={livePredictions} verdict={scanResult?.verdict || null} />
               )}
 
               {capturedPreview && (
-                <img src={capturedPreview} alt="Captured preview" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={capturedPreview} alt="Captured preview" className="absolute inset-0 w-full h-full object-contain" />
               )}
 
               {(uploadedSrc || isReady) && <><Corner pos="tl" /><Corner pos="tr" /><Corner pos="bl" /><Corner pos="br" /></>}
@@ -262,7 +265,9 @@ export default function Scanner() {
             </div>
 
             <div className="flex gap-2.5">
-              <button onClick={handleScan} disabled={!detectedObject || isScanning || (!uploadedSrc && !isReady)} className="btn-brand flex-1 h-12">
+              <button onClick={handleScan}
+                disabled={isScanning || (uploadedSrc ? isDetectingUpload : (!detectedObject || !isReady))}
+                className="btn-brand flex-1 h-12">
                 {isScanning
                   ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Analyzing…</>
                   : <><Zap size={17} />Scan now</>}
@@ -278,7 +283,7 @@ export default function Scanner() {
             {showLockOnHint && (
               <div className="flex items-center justify-center gap-2 text-sm text-muted">
                 <ScanLine size={15} />
-                {uploadedSrc ? "Couldn't identify an object in this photo — try another" : 'Point the camera at an object to lock on'}
+                {uploadedSrc ? "Didn't recognize a specific item — tap Scan now and we'll analyze the whole photo" : 'Point the camera at an object to lock on'}
               </div>
             )}
           </div>
