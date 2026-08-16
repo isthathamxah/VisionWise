@@ -72,7 +72,7 @@ export function sanitizeFood(food) {
   clean.ingredients = Array.isArray(food.ingredients)
     ? food.ingredients
         .filter(i => i?.name)
-        .slice(0, 8)
+        .slice(0, 25) // generous — a real packaged-food ingredient list rarely runs longer than this
         .map(i => ({
           name: String(i.name).slice(0, 60),
           whatItIs: typeof i.whatItIs === 'string' ? i.whatItIs.slice(0, 200) : '',
@@ -94,6 +94,8 @@ STEP 1 — decide isFood first, before anything else. isFood is true ONLY if the
 STEP 2 — if isFood is false: set the top-level "food" key to null and instead break the object down into 3-5 key components or factors that drove your verdict, with a percent weight each summing to 100, in "breakdown".
 
 STEP 3 — if isFood is true: set "breakdown" to an empty array (the nutrition data below covers that role instead) and fill in "food": dishType "packaged" and source "label" ONLY if you can actually read printed nutrition/ingredient text in the image — otherwise dishType "dish" and source "estimated". Never invent numbers: if the image is too unclear to read or reliably estimate, set unclear to true and leave nutrients and ingredients empty. Nutrient impact must be "Low", "Moderate", or "High" based on the amount in this serving relative to typical daily intake — not a blanket healthy/bad label. Set each nutrient's "direction" to "limit" (something people should generally moderate in large amounts, e.g. sugar, sodium, saturated fat), "beneficial" (generally good in reasonable amounts, e.g. fiber, protein, vitamins), or "neutral" (neither clearly applies) — this drives how it's color-coded, separately from how much of it is present. Keep each ingredient explanation to one short sentence.
+
+For "ingredients": if you can read a printed ingredient list (source "label"), transcribe and explain EVERY ingredient listed, in the order printed — do not summarize, group, or stop early just because the list is long; up to 25 is fine. If there is no printed list (source "estimated"), list the dish's main identifiable components instead (there's no fixed list to be exhaustive about).
 
 Respond with ONLY valid JSON (no markdown, no extra text), matching ONE of these two shapes exactly depending on your Step 1 decision:
 

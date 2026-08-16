@@ -98,10 +98,10 @@ test('sanitizeFood defaults a missing nutrient direction to neutral', () => {
   assert.equal(result.nutrients[0].direction, 'neutral')
 })
 
-test('sanitizeFood caps nutrients at 12 and ingredients at 8', () => {
+test('sanitizeFood caps nutrients at 12 and ingredients at 25', () => {
   const manyNutrients = Array.from({ length: 20 }, (_, i) => ({ label: `N${i}`, amount: 1 }))
-  const manyIngredients = Array.from({ length: 20 }, (_, i) => ({ name: `I${i}` }))
+  const manyIngredients = Array.from({ length: 30 }, (_, i) => ({ name: `I${i}` }))
   const result = sanitizeFood({ isFood: true, unclear: false, nutrients: manyNutrients, ingredients: manyIngredients })
   assert.equal(result.nutrients.length, 12)
-  assert.equal(result.ingredients.length, 8)
+  assert.equal(result.ingredients.length, 25)
 })
