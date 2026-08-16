@@ -140,6 +140,14 @@ Score guide: 0-33 = Bad, 34-66 = Neutral, 67-100 = Good`
         const text = result.response.text().trim()
         const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         const parsed = JSON.parse(cleaned)
+        // ScanLog's schema strictly requires verdict to be exactly "Good"/"Bad"/"Neutral"
+        // — Gemini is only told the score-to-verdict mapping via the prompt's score
+        // guide, and occasionally drifts off it (confirmed live: "Unrecognized / Blank
+        // Image" on an edge-case photo), which threw a hard Mongoose ValidationError
+        // and turned a working response into a 503. Deriving verdict from the
+        // (clamped) score directly makes it impossible for this to happen again.
+        parsed.score = Number.isFinite(Number(parsed.score)) ? Math.max(0, Math.min(100, Math.round(Number(parsed.score)))) : 50
+        parsed.verdict = parsed.score >= 67 ? 'Good' : parsed.score >= 34 ? 'Neutral' : 'Bad'
         parsed.breakdown = Array.isArray(parsed.breakdown)
           ? parsed.breakdown
               .filter(b => b?.label && Number.isFinite(b.percent))
