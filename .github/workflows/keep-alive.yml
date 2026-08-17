@@ -1,0 +1,17 @@
+name: Keep Render backend awake
+
+# Render's free tier spins the service down after 15 minutes with no inbound
+# HTTP traffic, causing a slow (30-60s) cold start on the next real request.
+# Pinging /health every 10 minutes keeps it warm — comfortably under that
+# 15-minute window even allowing for GitHub Actions' scheduling jitter.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # lets you trigger a run manually from the Actions tab to test it
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: curl -sf https://visionwise-api.onrender.com/health
