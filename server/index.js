@@ -55,19 +55,27 @@ app.use('/api/history', historyRoutes)
 // Health check (keeps Render free tier awake via uptime monitors)
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
 
-// TODO: remove — one-off diagnostic to see which Gemini models this key can actually use
+// TODO: remove — one-off diagnostic: actually try generateContent (not just list)
+// against several candidate models in one shot, since the catalog listing
+// includes models that 404 for a new key ("no longer available to new users").
 app.get('/debug-models', async (req, res) => {
-  try {
-    const key = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '').split(',')[0].trim()
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`)
-    const data = await r.json()
-    const names = (data.models || [])
-      .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
-      .map(m => m.name.replace('models/', ''))
-    res.json({ names })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
+  const key = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '').split(',')[0].trim()
+  const candidates = ['gemini-2.5-flash-lite', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash']
+  const results = {}
+  for (const model of candidates) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK' }] }] })
+      })
+      const data = await r.json()
+      results[model] = r.ok ? 'OK' : `${r.status}: ${data.error?.message?.slice(0, 150)}`
+    } catch (err) {
+      results[model] = `fetch error: ${err.message}`
+    }
   }
+  res.json(results)
 })
 
 // Catches anything passed to next(err) — notably the CORS origin check above,
