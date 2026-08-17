@@ -54,7 +54,10 @@ export const getAnalytics = async (req, res) => {
     })
     const chartData = Object.entries(byDate).map(([date, count]) => ({ date, count }))
 
-    res.json({ weeklyScore, chartData, totalScans: scans.length })
+    const verdictBreakdown = { Good: 0, Neutral: 0, Bad: 0 }
+    scans.forEach(s => { if (s.verdict in verdictBreakdown) verdictBreakdown[s.verdict]++ })
+
+    res.json({ weeklyScore, chartData, totalScans: scans.length, verdictBreakdown })
   } catch {
     res.status(500).json({ error: 'Failed to fetch analytics' })
   }

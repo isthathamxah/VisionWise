@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -19,10 +19,14 @@ export default function InfographicChart({ data }) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: -18 }}>
+        <CartesianGrid vertical={false} stroke="rgb(var(--border))" strokeDasharray="3 4" />
         <XAxis dataKey="date" tick={tick} tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false} />
-        <YAxis tick={tick} allowDecimals={false} axisLine={false} tickLine={false} width={30} />
+        {/* Explicit domain — with only a couple of days of data, auto-scaling produces
+            oddly-spaced ticks and one bar that dominates the whole chart. */}
+        <YAxis tick={tick} allowDecimals={false} axisLine={false} tickLine={false} width={30}
+          domain={[0, dataMax => Math.max(4, dataMax + 1)]} />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgb(var(--brand) / 0.08)' }} />
-        <Bar dataKey="count" radius={[5, 5, 0, 0]}>
+        <Bar dataKey="count" radius={[5, 5, 0, 0]} maxBarSize={36}>
           {data.map((_, i) => <Cell key={i} fill="rgb(var(--brand))" />)}
         </Bar>
       </BarChart>

@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Target, Utensils, TriangleAlert, RefreshCw, Search, X } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, TrendingUp, Utensils, ScanLine, TriangleAlert, RefreshCw, Search, X } from 'lucide-react'
 import InfographicChart from '../components/InfographicChart/InfographicChart'
+import VerdictDonut from '../components/InfographicChart/VerdictDonut'
 import StatCard from '../components/StatCard/StatCard'
+import ScoreRing from '../components/StatCard/ScoreRing'
 import BottomSheet from '../components/BottomSheet/BottomSheet'
 import { useToast } from '../context/ToastContext'
 import api from '../services/api'
 
 const verdictText = { Good: 'text-good', Bad: 'text-bad', Neutral: 'text-neutral' }
-const verdictDot  = { Good: 'bg-good',  Bad: 'bg-bad',  Neutral: 'bg-neutral' }
+const verdictBadge = { Good: 'bg-good/10 text-good', Bad: 'bg-bad/10 text-bad', Neutral: 'bg-neutral/10 text-neutral' }
 
 const PULL_MAX = 90
 const PULL_THRESHOLD = 60
@@ -127,13 +129,12 @@ function SwipeableRow({ scan, onOpen, onDeleteRequest }) {
           onOpen(scan)
         }}
         style={{ transform: `translateX(${translateX}px)`, transition: drag.current.dragging ? 'none' : 'transform 0.2s ease-out', touchAction: 'pan-y' }}
-        className="relative bg-bg card p-4 flex items-center gap-3 cursor-pointer hover:border-brand transition-colors select-none">
-        <span className={`w-2 h-2 rounded-full shrink-0 ${verdictDot[scan.verdict]}`} />
+        className="relative bg-bg card p-4 flex items-center gap-3.5 cursor-pointer hover:border-brand hover:shadow-pop transition-all select-none">
+        <span className={`flex items-center justify-center w-9 h-9 rounded-xl shrink-0 ${verdictBadge[scan.verdict]}`}>
+          {scan.food?.isFood ? <Utensils size={15} /> : <ScanLine size={15} />}
+        </span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            {scan.food?.isFood && <Utensils size={12} className="text-brand shrink-0" aria-label="Nutrition detail available" />}
-            <p className="text-text font-medium capitalize truncate">{scan.objectLabel}</p>
-          </div>
+          <p className="text-text font-medium capitalize truncate">{scan.objectLabel}</p>
           <p className="font-mono text-[11px] text-faint mt-0.5">
             {new Date(scan.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
           </p>
@@ -216,20 +217,27 @@ export default function History() {
         <h1 className="font-display font-extrabold text-2xl md:text-3xl text-text mt-2">Your scan history</h1>
       </div>
 
-      {/* Stat cards */}
+      {/* Hero stats — avg score gets a ring, the number that matters most shouldn't
+          compete equally with the others for attention */}
       {analytics && (
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <StatCard icon={Target} label="Avg score" value={`${analytics.weeklyScore}`} sub="Past 7 days" />
-          <StatCard icon={TrendingUp} label="Total scans" value={analytics.totalScans} sub="This week" />
-          <StatCard icon={Target} label="Logged" value={scans.length ? `${scans.length}+` : '0'} sub="On this page" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+          <ScoreRing score={analytics.weeklyScore} label="Avg score" sub="Past 7 days" />
+          <StatCard icon={TrendingUp} label="Total scans" value={analytics.totalScans} sub="Past 7 days" />
+          <StatCard icon={Utensils} label="Good scans" value={analytics.verdictBreakdown?.Good ?? 0} sub="Past 7 days" />
         </div>
       )}
 
-      {/* Chart */}
+      {/* Charts */}
       {analytics && (
-        <div className="card p-6 mb-8">
-          <p className="eyebrow mb-4">Weekly activity</p>
-          <InfographicChart data={analytics.chartData} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
+          <div className="card p-6">
+            <p className="eyebrow mb-4">Weekly activity</p>
+            <InfographicChart data={analytics.chartData} />
+          </div>
+          <div className="card p-6">
+            <p className="eyebrow mb-4">Verdict split</p>
+            <VerdictDonut breakdown={analytics.verdictBreakdown} />
+          </div>
         </div>
       )}
 
