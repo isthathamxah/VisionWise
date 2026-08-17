@@ -10,12 +10,15 @@ const keys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '')
   .map(k => k.trim())
   .filter(Boolean)
 
-// Pinned to a stable, named model rather than the "-latest" alias. Confirmed
-// live: "gemini-flash-latest" currently floats to gemini-3.7-flash, whose free
-// tier allows only 20 requests/day/project — gemini-2.5-flash's free tier is
-// far more generous, and being a named (not floating) model means the quota
-// won't silently change again on Google's next model rollout.
-const models = keys.map(key => new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-2.5-flash' }))
+// Pinned to a stable, named model rather than the "-latest" alias (which
+// floats to gemini-3.7-flash, whose free tier is a tight 20 requests/day/
+// project). gemini-2.5-flash — the obvious "just use an older stable model"
+// fix — turned out to be a dead end too: it 404s as "no longer available to
+// new users" despite still being listed in the models catalog. Confirmed via
+// a live probe against this key's actual account that gemini-3.5-flash-lite
+// works; "lite" variants have consistently had the more generous free-tier
+// quota in every model generation checked here.
+const models = keys.map(key => new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-3.5-flash-lite' }))
 
 // Rules used when Gemini is rate-limited
 const fallbackRules = {
