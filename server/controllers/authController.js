@@ -9,7 +9,7 @@ const signTokens = (userId, email) => ({
   refreshToken: jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN })
 })
 
-const userShape = user => ({ _id: user._id, name: user.name, email: user.email, avatar: user.avatar, hasPassword: !user.googleId })
+const userShape = user => ({ _id: user._id, name: user.name, email: user.email, avatar: user.avatar, hasPassword: !user.googleId, createdAt: user.createdAt })
 
 // Avatars are stored inline as a data URL (no S3/Cloudinary) — the client
 // resizes to a small square before sending, this is just a safety cap.

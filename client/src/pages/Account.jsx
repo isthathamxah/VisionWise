@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sun, Moon, LogOut, Target, TrendingUp, Pencil, Check, X, Eye, EyeOff, Camera } from 'lucide-react'
+import { Sun, Moon, LogOut, TrendingUp, Pencil, Check, X, Eye, EyeOff, Camera, Lock, CalendarDays } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
 import StatCard from '../components/StatCard/StatCard'
+import ScoreRing from '../components/StatCard/ScoreRing'
 import api, { getApiError } from '../services/api'
 
 const pwRules = [
@@ -152,6 +153,7 @@ function ChangePassword() {
     return (
       <button onClick={() => setOpen(true)}
         className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-surface2 transition-colors cursor-pointer text-text">
+        <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-brandSoft text-brand shrink-0"><Lock size={16} /></span>
         <span className="text-sm font-medium">Change password</span>
       </button>
     )
@@ -207,35 +209,51 @@ export default function Account() {
 
   const handleLogout = () => { logout(); navigate('/') }
 
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    : null
+
   return (
-    <div className="container-vw py-8 md:py-10 max-w-lg">
+    <div className="container-vw py-8 md:py-10 max-w-xl">
       <div className="mb-8">
         <span className="eyebrow">Account</span>
         <h1 className="font-display font-extrabold text-2xl md:text-3xl text-text mt-2">Your profile</h1>
       </div>
 
-      {/* Profile card */}
-      <div className="card p-6 flex items-center gap-4 mb-6">
-        <AvatarUpload user={user} onSaved={updateUser} />
-        <div className="min-w-0 flex-1">
-          <EditableName name={user?.name} onSaved={updateUser} />
-          <p className="text-sm text-muted truncate">{user?.email}</p>
+      {/* Profile card — a soft brand wash behind the avatar gives the header some
+          weight instead of just floating on the page background like plain text */}
+      <div className="relative card overflow-hidden mb-6">
+        <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-brand/10 to-transparent pointer-events-none" />
+        <div className="relative p-6 flex items-center gap-4">
+          <AvatarUpload user={user} onSaved={updateUser} />
+          <div className="min-w-0 flex-1">
+            <EditableName name={user?.name} onSaved={updateUser} />
+            <p className="text-sm text-muted truncate">{user?.email}</p>
+            {memberSince && (
+              <p className="flex items-center gap-1.5 font-mono text-[11px] text-faint mt-1.5">
+                <CalendarDays size={12} /> Member since {memberSince}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — same visual language as the dashboard */}
       {stats && (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-          <StatCard icon={Target} label="Avg score" value={`${stats.weeklyScore}`} sub="Past 7 days" />
-          <StatCard icon={TrendingUp} label="Total scans" value={stats.totalScans} sub="This week" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
+          <ScoreRing score={stats.weeklyScore} label="Avg score" sub="Past 7 days" />
+          <StatCard icon={TrendingUp} label="Total scans" value={stats.totalScans} sub="Past 7 days" />
         </div>
       )}
 
       {/* Settings */}
+      <span className="eyebrow block mb-2.5">Preferences</span>
       <div className="card p-2 mb-6 divide-y divide-border">
         <button onClick={toggle}
           className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-surface2 transition-colors cursor-pointer text-text">
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-brandSoft text-brand shrink-0">
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </span>
           <span className="text-sm font-medium">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
         </button>
         {user?.hasPassword && <ChangePassword />}
